@@ -1,0 +1,38 @@
+#System
+.DS_Store
+
+#Applications
+*.app
+*.exe
+*.bak
+*.log
+
+bin/data/recordings/*.txt
+bin/data/csv/*.csv
+build/
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Xcode stuff
+*.xcuserstate
+*.xccheckout
+*.xcbkptlist
+*.xcsettings
+xcuserdata
+
+# force yarp/ACE libs to be included:
+
+!libACE.dylib
+!libYARP_OS.a
+!libYARP_init.a
