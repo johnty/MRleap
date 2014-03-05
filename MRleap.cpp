@@ -1702,44 +1702,44 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                 
                 if (x->fingerTipVelocityOnOff)    {
                     
-                    t_atom pointVel[8];
+                    t_atom pointVel[7];
                     
                     atom_setsym(pointVel,       x->s_tipVelocity);
-                    atom_setlong(pointVel+2,    pointID);
-                    atom_setlong(pointVel+3,    handID);
-                    atom_setlong(pointVel+4,    x->curFrameID);
-                    atom_setfloat(pointVel+5,   point.tipVelocity().x);
-                    atom_setfloat(pointVel+6,   point.tipVelocity().y);
-                    atom_setfloat(pointVel+7,   point.tipVelocity().z);
+                    atom_setlong(pointVel+1,    pointID);
+                    atom_setlong(pointVel+2,    handID);
+                    atom_setlong(pointVel+3,    x->curFrameID);
+                    atom_setfloat(pointVel+4,   point.tipVelocity().x);
+                    atom_setfloat(pointVel+5,   point.tipVelocity().y);
+                    atom_setfloat(pointVel+6,   point.tipVelocity().z);
                     
-                    outlet_anything(x->outletFingers, x->HAND, 8, pointVel);
+                    outlet_anything(x->outletFingers, x->HAND, 7, pointVel);
                 }
                 ///////////////tip dimension///////////
                 if (x->fingerDimensionOnOff)  {
                     
-                    t_atom pointDim[7];
+                    t_atom pointDim[6];
                     
                     atom_setsym(pointDim,       x->s_tipDimension);
-                    atom_setlong(pointDim+2,    pointID);
-                    atom_setlong(pointDim+3,    handID);
-                    atom_setlong(pointDim+4,    x->curFrameID);
-                    atom_setfloat(pointDim+5,   point.width());
-                    atom_setfloat(pointDim+6,   point.length());
+                    atom_setlong(pointDim+1,    pointID);
+                    atom_setlong(pointDim+2,    handID);
+                    atom_setlong(pointDim+3,    x->curFrameID);
+                    atom_setfloat(pointDim+4,   point.width());
+                    atom_setfloat(pointDim+5,   point.length());
                     
-                    outlet_anything(x->outletFingers, x->HAND, 7, pointDim);
+                    outlet_anything(x->outletFingers, x->HAND, 6, pointDim);
                 }
                 if (x->fingerTouchZoneOnOff)  {
                     
-                    t_atom pointTouch[7];
+                    t_atom pointTouch[6];
                     
                     atom_setsym(pointTouch,         x->s_touchZone);
-                    atom_setlong(pointTouch+2,      pointID);
-                    atom_setlong(pointTouch+3,      handID);
-                    atom_setlong(pointTouch+4,      x->curFrameID);
-                    atom_setfloat(pointTouch+5,     point.touchDistance());
-                    atom_setlong(pointTouch+6,      point.touchZone());
+                    atom_setlong(pointTouch+1,      pointID);
+                    atom_setlong(pointTouch+2,      handID);
+                    atom_setlong(pointTouch+3,      x->curFrameID);
+                    atom_setfloat(pointTouch+4,     point.touchDistance());
+                    atom_setlong(pointTouch+5,      point.touchZone());
                     
-                    outlet_anything(x->outletFingers, x->HAND, 7, pointTouch);
+                    outlet_anything(x->outletFingers, x->HAND, 6, pointTouch);
                 }
             }
         }
