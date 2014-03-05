@@ -13,6 +13,7 @@
  }
  */
 
+
 #include "ext.h"							// standard Max include, always required
 #include "ext_obex.h"						// required for new style Max object
 #include "Leap.h"
@@ -957,7 +958,7 @@ void MRleap_assist(t_MRleap *x, void *b, long m, long a, char *s)
 /************************************/
 void MRleap_free(t_MRleap *x)
 {
-	if (x->leap->isConnected())
+	if (x->leap)
 		delete (Leap::Controller *)(x->leap);
 }
 /************************************/
