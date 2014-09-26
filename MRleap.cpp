@@ -1262,7 +1262,7 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
         
         
         savelock  = (long) jit_object_method(matrix,_jit_sym_lock, 1);
-        jit_object_method(matrix,_jit_sym_getinfo,&minfo);
+            jit_object_method(matrix,_jit_sym_getinfo,&minfo);
         jit_object_method(matrix,_jit_sym_getdata,&bp);
         
         
@@ -1290,7 +1290,7 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
 
         imageBufferLength = image.width() * image.height();
         
-        post("width = %d   height = %d   length = %d    ", image.width(), image.height(), imageBufferLength);
+//        post("width = %d   height = %d   length = %d    ", image.width(), image.height(), imageBufferLength);
         
         const unsigned char* image_buffer   = image.data();
         
@@ -1784,16 +1784,15 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                 
                 if(x->fingerMainOnOff)    {
                     
-                    t_atom fingerMain[6];
+                    t_atom fingerMain[5];
                 
                     atom_setsym(fingerMain,       x->s_fingerMain);
                     atom_setlong(fingerMain+1,    pointID);
                     atom_setlong(fingerMain+2,    handID);
                     atom_setlong(fingerMain+3,    x->curFrameID);
-                    atom_setlong(fingerMain+4,    numFingers);
-                    atom_setfloat(fingerMain+5,   finger.timeVisible() * 1000);//sec -> ms
+                    atom_setfloat(fingerMain+4,   finger.timeVisible() * 1000);//sec -> ms
                     
-                    outlet_anything(x->outletFingers, x->HAND, 6, fingerMain);
+                    outlet_anything(x->outletFingers, x->HAND, 5, fingerMain);
                 }
                 /////////////direction///////////////
                 if (x->fingerDirectionOnOff) {
