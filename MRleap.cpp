@@ -244,7 +244,7 @@ typedef struct _MRleap
     t_symbol            *s_swipeMain;
     t_symbol            *s_swipePosition;
     t_symbol            *s_swipeDirection;
-    
+    t_symbol            *s_basis;
     
     /****************************************************/
     /****************************************************/
@@ -888,6 +888,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->s_fingerMain             = gensym("fingerMain");
     x->s_direction              = gensym("direction");
     x->s_velocity               = gensym("velocity");
+    x->s_basis                  = gensym("basis");
      
     x->s_tip                    = gensym("tip");
     x->s_tipVelocity            = gensym("tipVelocity");
@@ -1219,79 +1220,7 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
         
         outlet_anything(x->outletFrame, x->s_rotationMatrix, 10, frameRotationMatrix);
     }
-    
-    
-    /////////////which hand??////////////////////
-  /*  Leap::HandList handList = frame.hands();
-
-    if (!handList.isEmpty())   {
-        
-        Leap::Hand   leftHand = frame.hands().leftmost();
-        
-        if (leftHand.isValid()) {
-            
-            
-             x->leftmostID = leftHand.id();
-        }
-        
-        Leap::Hand   rightHand = frame.hands().rightmost();
-        
-        if (rightHand.isValid()) {
-                
-            x->rightmostID = rightHand.id();
-        }
-        
-        //sort the rest of the hands??
-        
-        if (x->rightmostID >= 0 && x->leftmostID >= 0)  {
-            
-            if (x->rightmostID == x->leftmostID && x->rightmostID == x->prevLeftmostID) {
-            //if hand ids are the same (one hand detected), and the current right hand is the same as the previous left hand
-            // -> the right hand has been removed
-            
-                x->rightmostID = -1;
-            }
-            else if (x->rightmostID == x->leftmostID && x->leftmostID == x->prevRightmostID) {
-            
-                x->leftmostID = -1;
-            }
-        }
-/*        else if (x->prevRightmostID < 0 && x->prevLeftmostID < 0){
-         
-            x->rightmostID = rightHand.id();
-            x->leftmostID  = -1;
-            
-        }
- */
-//    }
-
 }
-/*
- 
- Leap::Matrix        mtxTotalMotionRotation;
- Leap::Vector        vecTotalMotionTranslation;
- float               fTotalMotionScale;
- 
- //Update the translation in the current reference frame
- if (( m_uiFlags & kFlag_Translate ) && bShouldTranslate)
- {
- m_vTotalMotionTranslation += m_mtxTotalMotionRotation.rigidInverse().transformDirection(frame.translation(m_lastFrame));
- }
- 
- //Update the rotation
- if (( m_uiFlags & kFlag_Rotate ) && bShouldRotate)
- {
- m_mtxTotalMotionRotation = frame.rotationMatrix(m_lastFrame) * m_mtxTotalMotionRotation; // Left multiply, relative to last frame
- }
- 
- //Update the scale
- if (( m_uiFlags & kFlag_Scale ) && bShouldScale)
- {
- m_fTotalMotionScale = LeapUtil::Clamp(  m_fTotalMotionScale * frame.scaleFactor(m_lastFrame),
- kfMinScale,
- kfMaxScale );
- }
- */
 /************************************/
 void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
 {
@@ -1647,7 +1576,7 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 atom_setsym(handTranslation,        x->s_translation);
                 atom_setlong(handTranslation+1,     handID);
                 atom_setlong(handTranslation+2,     x->curFrameID);
-                atom_setfloat(handTranslation+3 ,    handConfidence);
+                atom_setfloat(handTranslation+3 ,   handConfidence);
                 atom_setfloat(handTranslation+4,    translationProb);
                 atom_setfloat(handTranslation+5,    trans.x);
                 atom_setfloat(handTranslation+6,    trans.y);
@@ -1693,6 +1622,28 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
             }
             
             /************************************/
+            
+            if (x->handBasisOnOff) {
+                
+                Leap::FloatArray array = hand.basis().toArray3x3();
+                
+                t_atom handBasis[13];
+                
+                atom_setsym(handBasis,          x->s_basis);
+                atom_setlong(handBasis+1,       handID);
+                atom_setlong(handBasis+2,       x->curFrameID);
+                atom_setfloat(handBasis+3,      handConfidence);
+                
+                for (int i = 4; i < 13; i++)    {
+                    
+                    atom_setfloat(handBasis + i, array.m_array[i]);
+                }
+
+                
+                outlet_anything(x->outletHands, x->HAND, 13, handBasis);
+
+                
+            }
         }
     }
 }
@@ -1813,7 +1764,7 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
 {
     Leap::FingerList        fingers      = frame.fingers();
 
-    const int               numFingers   = fingers.count(); //what's the max?? (have seen up to 5 so far
+    const int               numFingers   = fingers.count(); //now always 5 with new API
     
     for(int i = 0; i < numFingers; ++i)  {
         
