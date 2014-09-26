@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		41E47A4E166F9706006D3CB8 /* MaxAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 41E47A4D166F9706006D3CB8 /* MaxAPI.framework */; };
+		B6044BF119D35F4E0059C403 /* MaxAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 41E47A4D166F9706006D3CB8 /* MaxAPI.framework */; };
+		B6044BF819D3FE840059C403 /* Leap.h in Headers */ = {isa = PBXBuildFile; fileRef = B6044BF619D3FE840059C403 /* Leap.h */; };
+		B6044BF919D3FE840059C403 /* LeapMath.h in Headers */ = {isa = PBXBuildFile; fileRef = B6044BF719D3FE840059C403 /* LeapMath.h */; };
+		B6044BFA19D3FE910059C403 /* libLeap.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = B6044BF419D3FE740059C403 /* libLeap.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		B6044BFB19D3FEC00059C403 /* libLeap.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B6044BF419D3FE740059C403 /* libLeap.dylib */; };
 		B63C2CED1843228800FF1DFA /* MRleap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B63C2CEC1843228800FF1DFA /* MRleap.cpp */; };
-		B63C2CEF1843229A00FF1DFA /* Leap.h in Headers */ = {isa = PBXBuildFile; fileRef = B63C2CEE1843229A00FF1DFA /* Leap.h */; };
-		B63C2CF71843E8A100FF1DFA /* libLeap.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B63C2CF61843E8A100FF1DFA /* libLeap.dylib */; };
-		B63C2CF91843E8AB00FF1DFA /* LeapMath.h in Headers */ = {isa = PBXBuildFile; fileRef = B63C2CF81843E8AB00FF1DFA /* LeapMath.h */; };
-		B63C2CFA1843E8B100FF1DFA /* libLeap.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = B63C2CF61843E8A100FF1DFA /* libLeap.dylib */; };
-		B6EE240D1857E29E002D98D6 /* maxmspsdk.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = B6EE240C1857E29E002D98D6 /* maxmspsdk.xcconfig */; };
+		B6B4E90E19CD5CA7008F6F83 /* JitterAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B6B4E90D19CD5CA7008F6F83 /* JitterAPI.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -23,7 +23,7 @@
 			dstPath = Contents/MacOS;
 			dstSubfolderSpec = 1;
 			files = (
-				B63C2CFA1843E8B100FF1DFA /* libLeap.dylib in CopyFiles */,
+				B6044BFA19D3FE910059C403 /* libLeap.dylib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -32,10 +32,11 @@
 /* Begin PBXFileReference section */
 		2FBBEAE508F335360078DB84 /* MRleap.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MRleap.mxo; sourceTree = BUILT_PRODUCTS_DIR; };
 		41E47A4D166F9706006D3CB8 /* MaxAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MaxAPI.framework; path = "../../../c74support/max-includes/MaxAPI.framework"; sourceTree = "<group>"; };
+		B6044BF419D3FE740059C403 /* libLeap.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libLeap.dylib; sourceTree = "<group>"; };
+		B6044BF619D3FE840059C403 /* Leap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Leap.h; path = "../../../../../LeapDeveloperKit_2.1.4+22333_mac/LeapSDK/include/Leap.h"; sourceTree = "<group>"; };
+		B6044BF719D3FE840059C403 /* LeapMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LeapMath.h; path = "../../../../../LeapDeveloperKit_2.1.4+22333_mac/LeapSDK/include/LeapMath.h"; sourceTree = "<group>"; };
 		B63C2CEC1843228800FF1DFA /* MRleap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MRleap.cpp; sourceTree = "<group>"; };
-		B63C2CEE1843229A00FF1DFA /* Leap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Leap.h; path = ../../../../../LeapDeveloperKit/LeapSDK/include/Leap.h; sourceTree = "<group>"; };
-		B63C2CF61843E8A100FF1DFA /* libLeap.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLeap.dylib; path = ../../../../../LeapDeveloperKit/LeapSDK/lib/libLeap.dylib; sourceTree = "<group>"; };
-		B63C2CF81843E8AB00FF1DFA /* LeapMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LeapMath.h; path = ../../../../../LeapDeveloperKit/LeapSDK/include/LeapMath.h; sourceTree = "<group>"; };
+		B6B4E90D19CD5CA7008F6F83 /* JitterAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JitterAPI.framework; path = "../../../c74support/jit-includes/JitterAPI.framework"; sourceTree = "<group>"; };
 		B6EE240C1857E29E002D98D6 /* maxmspsdk.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = maxmspsdk.xcconfig; path = ../../maxmspsdk.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -44,8 +45,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B63C2CF71843E8A100FF1DFA /* libLeap.dylib in Frameworks */,
-				41E47A4E166F9706006D3CB8 /* MaxAPI.framework in Frameworks */,
+				B6044BFB19D3FEC00059C403 /* libLeap.dylib in Frameworks */,
+				B6B4E90E19CD5CA7008F6F83 /* JitterAPI.framework in Frameworks */,
+				B6044BF119D35F4E0059C403 /* MaxAPI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +67,7 @@
 		089C1671FE841209C02AAC07 /* External Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				B6B4E90D19CD5CA7008F6F83 /* JitterAPI.framework */,
 				41E47A4D166F9706006D3CB8 /* MaxAPI.framework */,
 			);
 			name = "External Frameworks and Libraries";
@@ -74,9 +77,9 @@
 			isa = PBXGroup;
 			children = (
 				B6EE240C1857E29E002D98D6 /* maxmspsdk.xcconfig */,
-				B63C2CF61843E8A100FF1DFA /* libLeap.dylib */,
-				B63C2CEE1843229A00FF1DFA /* Leap.h */,
-				B63C2CF81843E8AB00FF1DFA /* LeapMath.h */,
+				B6044BF419D3FE740059C403 /* libLeap.dylib */,
+				B6044BF619D3FE840059C403 /* Leap.h */,
+				B6044BF719D3FE840059C403 /* LeapMath.h */,
 				B63C2CEC1843228800FF1DFA /* MRleap.cpp */,
 			);
 			name = Source;
@@ -97,8 +100,8 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B63C2CF91843E8AB00FF1DFA /* LeapMath.h in Headers */,
-				B63C2CEF1843229A00FF1DFA /* Leap.h in Headers */,
+				B6044BF919D3FE840059C403 /* LeapMath.h in Headers */,
+				B6044BF819D3FE840059C403 /* Leap.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,7 +134,7 @@
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0500;
+				LastUpgradeCheck = 0600;
 			};
 			buildConfigurationList = 2FBBEACF08F335010078DB84 /* Build configuration list for PBXProject "MRleap" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -154,7 +157,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B6EE240D1857E29E002D98D6 /* maxmspsdk.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -185,7 +187,8 @@
 		2FBBEAD008F335010078DB84 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				SDKROOT = macosx;
 			};
 			name = Development;
@@ -193,7 +196,8 @@
 		2FBBEAD108F335010078DB84 /* Deployment */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				SDKROOT = macosx;
 			};
 			name = Deployment;
@@ -203,23 +207,25 @@
 			baseConfigurationReference = B6EE240C1857E29E002D98D6 /* maxmspsdk.xcconfig */;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
-				COMBINE_HIDPI_IMAGES = NO;
+				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/../../../c74support/max-includes\"",
+					"$(PROJECT_DIR)",
+					"/Users/MartinRitter/Documents/C/maxMSP/MaxSDK-6.1.4/c74support/max-includes",
+					"/Users/MartinRitter/Documents/C/maxMSP/MaxSDK-6.1.4/c74support/jit-includes",
 				);
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_VERSION = "";
 				LD_MAP_FILE_PATH = "$(TARGET_TEMP_DIR)/$(PRODUCT_NAME)-LinkMap-$(CURRENT_VARIANT)-$(CURRENT_ARCH).txt";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
+					"\"$(SRCROOT)/../../../../../LeapDeveloperKit_2.1.4+22333_mac\"/**",
 					"$(SRCROOT)",
-					"$(SRCROOT)/../../../../../LeapDeveloperKit/LeapSDK/lib",
+					"$(PROJECT_DIR)",
 				);
 				OTHER_LDFLAGS = "$(C74_SYM_LINKER_FLAGS)";
 				PRODUCT_NAME = MRleap;
-				SDKROOT = macosx10.8;
+				SDKROOT = macosx;
 			};
 			name = Development;
 		};
@@ -228,22 +234,24 @@
 			baseConfigurationReference = B6EE240C1857E29E002D98D6 /* maxmspsdk.xcconfig */;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
-				COMBINE_HIDPI_IMAGES = NO;
+				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = YES;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/../../../c74support/max-includes\"",
+					"$(PROJECT_DIR)",
+					"/Users/MartinRitter/Documents/C/maxMSP/MaxSDK-6.1.4/c74support/max-includes",
+					"/Users/MartinRitter/Documents/C/maxMSP/MaxSDK-6.1.4/c74support/jit-includes",
 				);
 				GCC_VERSION = "";
 				LD_MAP_FILE_PATH = "$(TARGET_TEMP_DIR)/$(PRODUCT_NAME)-LinkMap-$(CURRENT_VARIANT)-$(CURRENT_ARCH).txt";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
+					"\"$(SRCROOT)/../../../../../LeapDeveloperKit_2.1.4+22333_mac\"/**",
 					"$(SRCROOT)",
-					"$(SRCROOT)/../../../../../LeapDeveloperKit/LeapSDK/lib",
+					"$(PROJECT_DIR)",
 				);
 				OTHER_LDFLAGS = "$(C74_SYM_LINKER_FLAGS)";
 				PRODUCT_NAME = MRleap;
-				SDKROOT = macosx10.8;
+				SDKROOT = macosx;
 			};
 			name = Deployment;
 		};

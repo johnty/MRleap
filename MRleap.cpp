@@ -13,17 +13,20 @@
  }
  */
 
-
+/************************************/
 #include "ext.h"							// standard Max include, always required
 #include "ext_obex.h"						// required for new style Max object
 #include "Leap.h"
 #include <math.h>
 #include "LeapMath.h"
 
+#include "jit.common.h"
+
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
 
+/************************************/
 
 // a wrapper for cpost() only called for debug builds on Windows
 // to see these console posts, run the DbgView program (part of the SysInternals package distributed by Microsoft)
@@ -42,29 +45,36 @@
 	#define T_EXPORT __attribute__((visibility("default")))
 #endif
 
+/************************************/
+const float circleMinRadiusDef              = 5.;
+const float circleMinArcDef                 = 1.5 * Leap::PI;
+const float swipeMinLengthDef               = 150;
+const float swipeMinVelocityDef             = 1000;
+const float keyTapMinDownVelocityDef        = 50;
+const float keyTapHistorySecondsDef         = 0.1;
+const float keyTapMinDistanceDef            = 3;
+const float screenTapMinForwardVelocityDef  = 50;
+const float screenTapHistorySecondsDef      = 0.1;
+const float screenTapMinDistanceDef         = 5;
 
- const float circleMinRadiusDef               = 5.;
- const float circleMinArcDef                  = 1.5 * Leap::PI;
- const float swipeMinLengthDef                = 150;
- const float swipeMinVelocityDef              = 1000;
- const float keyTapMinDownVelocityDef         = 50;
- const float keyTapHistorySecondsDef          = 0.1;
- const float keyTapMinDistanceDef             = 3;
- const float screenTapMinForwardVelocityDef   = 50;
- const float screenTapHistorySecondsDef       = 0.1;
- const float screenTapMinDistanceDef          = 5;
+long imageBufferLength                      = 0;
 
-
+const std::string fingerNames[] = {"Thumb", "Index", "Middle", "Ring", "Pinky"};
+const std::string boneNames[] = {"Metacarpal", "Proximal", "Middle", "Distal"};
+const std::string stateNames[] = {"STATE_INVALID", "STATE_START", "STATE_UPDATE", "STATE_END"};
 /************************************/
 typedef struct _MRleap
 {
 	t_object            ob;
+    void                *m_clock;
     
-    
-    long             prevFrameID;
-    long             curFrameID;
+    long                prevFrameID;
+    long                curFrameID;
     
     long                allDegOnOff;
+    ///////////image
+    long                imageOnOff;
+    long                imageDistortionOnOff;
     ///////////frame
     long                frameRotOnOff;
     long                frameMainOnOff;
@@ -109,6 +119,11 @@ typedef struct _MRleap
     long                handRotationMatrix;
     long                handHorizontalPlaneOnOff;
     long                handPositionVelocityOnOff;
+    
+    ///////////2.x stuff
+    
+    long                handBasisOnOff;
+    ////////////////
     
     float               handRotationProb;
     float               handScaleProb;
@@ -230,6 +245,23 @@ typedef struct _MRleap
     t_symbol            *s_swipePosition;
     t_symbol            *s_swipeDirection;
     
+    
+    /****************************************************/
+    /****************************************************/
+    //          JITTER STUFF
+    
+    t_symbol			*matrix_nameLeft;
+    t_symbol			*matrix_nameRight;
+    long				plane;
+    long				offsetcount;
+    long 				offset[JIT_MATRIX_MAX_DIMCOUNT];
+    
+    long                prevDim[2];
+    t_symbol            *prevMatrix;
+    /****************************************************/
+    /****************************************************/
+    
+    
 } t_MRleap;
 
 /************************************/
@@ -253,7 +285,15 @@ void MRleap_processScreenTapData(t_MRleap *x,   Leap::Frame frame, Leap::Gesture
 void MRleap_processSwipeData(t_MRleap *x,       Leap::Frame frame, Leap::Gesture gesture);
 
 void MRleap_gestureResetAll(t_MRleap *x);
+/****************************************************/
+/****************************************************/
+//          JITTER STUFF
 
+void MRleap_getImageData(t_MRleap *x,           Leap::Frame frame);
+void MRleap_getImage    (t_MRleap *x,           Leap::Image image, t_symbol *matrixName);
+void MRleap_getDistortion(t_MRleap *x,          Leap::Image image);
+ /****************************************************/
+ /****************************************************/
 
 t_max_err MRleap_gestureCircleMinArc_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
 t_max_err MRleap_gestureCircleMinArc_get(t_MRleap *x, t_object *attr, long *argc, t_atom **argv);
@@ -266,6 +306,8 @@ t_max_err MRleap_gestureSwipeOnOff_set(t_MRleap *x, t_object *attr, long argc, t
 int MRleap_biggestRotAxis(t_MRleap *x, Leap::Vector vec);
 
 void MRleap_bang(t_MRleap *x);
+void MRleap_checkLeapConnection(t_MRleap *x);
+
 /************************************/
 static t_class *MRleap_class;
 
@@ -273,8 +315,9 @@ static t_class *MRleap_class;
 /************************************/
 int T_EXPORT main(void)
 {
+
 	t_class *c;
-	
+    
 	c = class_new("MRleap", (method)MRleap_new, (method)MRleap_free, sizeof(t_MRleap), NULL, A_GIMME,   0);
     class_addmethod(c, (method)MRleap_bang,                     "bang",                                 0);
     class_addmethod(c, (method)MRleap_assist,                   "assist",                    A_CANT,    0);
@@ -290,6 +333,14 @@ int T_EXPORT main(void)
     CLASS_ATTR_LONG(c, "allDegOnOff", 0, t_MRleap, allDegOnOff);
 	CLASS_ATTR_STYLE_LABEL(c, "allDegOnOff", 0, "onoff", "Degrees");
 	CLASS_ATTR_SAVE(c,"allDegOnOff", 0);
+    /************************** IMAGE ********************************/
+    CLASS_ATTR_LONG(c, "imageOnOff", 0, t_MRleap, imageOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "imageOnOff", 0, "onoff", "ImageOnOff");
+    CLASS_ATTR_SAVE(c,"imageOnOff", 0);
+    /////////////////////////////////////////////////////////////////////
+    CLASS_ATTR_LONG(c, "imageDistortionOnOff", 0, t_MRleap, imageDistortionOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "imageDistortionOnOff", 0, "onoff", "ImageDistortionOnOff");
+    CLASS_ATTR_SAVE(c,"imageDistortionOnOff", 0);
     /************************** FRAME ********************************/
     CLASS_ATTR_LONG(c, "frameMainOnOff", 0, t_MRleap, frameMainOnOff);
 	CLASS_ATTR_STYLE_LABEL(c, "frameMainOnOff", 0, "onoff", "FrameMain");
@@ -429,6 +480,11 @@ int T_EXPORT main(void)
     CLASS_ATTR_LONG(c, "handHorizontalPlaneOnOff", 0, t_MRleap, handHorizontalPlaneOnOff);
 	CLASS_ATTR_STYLE_LABEL(c, "handHorizontalPlaneOnOff", 0, "onoff", "HandPlane");
 	CLASS_ATTR_SAVE(c,"handHorizontalPlaneOnOff", 0);
+    /////////////////2.x stuff
+    CLASS_ATTR_LONG(c, "handBasisOnOff", 0, t_MRleap, handBasisOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "handBasisOnOff", 0, "onoff", "HandBasisOnOff");
+    CLASS_ATTR_SAVE(c,"handBasisOnOff", 0);
+    /////////////////////
     /*********************************************************************/
     /*****************************Pointalbes******************************/
     CLASS_ATTR_LONG(c, "toolMainOnOff", 0, t_MRleap, toolMainOnOff);
@@ -587,89 +643,13 @@ int T_EXPORT main(void)
 	CLASS_ATTR_LABEL(c, "circleMinArc", 0, "CircleMinArc");
     CLASS_ATTR_ACCESSORS(c, "circleMinArc", MRleap_gestureCircleMinArc_get, MRleap_gestureCircleMinArc_set);
 	CLASS_ATTR_SAVE(c,"circleMinArc", 0);
-    /*********************************************************************
-    ////subgroups in inspectro
-    CLASS_ATTR_CATEGORY(c, "frameHist",                         0, "Global");
-    CLASS_ATTR_CATEGORY(c, "allDegOnOff",                       0, "Global");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "frameMainOnOff",                    0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameRotOnOff",                     0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameRotRawOnOff",                  0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameRotProb",                      0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameScaleOnOff",                   0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameScaleRawOnOff",                0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameScaleProb",                    0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameTranslationOnOff",             0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameTranslationRawOnOff",          0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameTranslationNormOnOff",         0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameTranslationProb",              0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "frameRotationMatrixOnOff",          0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "rightmostOnOff",                    0, "Frame");
-    CLASS_ATTR_CATEGORY(c, "leftmostOnOff",                     0, "Frame");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "handMainOnOff",                     0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handSphereOnOff",                   0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handSphereNormOnOff",               0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handPositionOnOff",                 0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handPositionNormOnOff",             0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handPositionStabilizationOnOff",    0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handPositionVelocityOnOff",         0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handRotationOnOff",                 0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handRotationRawOnOff",              0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handRotationProb",                  0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handScaleOnOff",                    0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handScaleRawOnOff",                 0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handScaleProb",                     0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handTranslationOnOff",              0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handTranslationRawOnOff",           0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handTranslationNormOnOff",          0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handTranslationProb",               0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handRotationMatrixOnOff",           0, "Hand");
-    CLASS_ATTR_CATEGORY(c, "handHorizontalPlaneOnOff",          0, "Hand");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "toolMainOnOff",                     0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerMainOnOff",                   0, "Finger");
-    CLASS_ATTR_CATEGORY(c, "toolDirectionOnOff",                0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerDirectionOnOff",              0, "Finger");
-    CLASS_ATTR_CATEGORY(c, "toolTipPositionOnOff",              0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerTipPositionOnOff",            0, "Finger");
-    CLASS_ATTR_CATEGORY(c, "toolTipNormOnOff",                  0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerTipNormOnOff",                0, "Finger");
-    CLASS_ATTR_CATEGORY(c, "toolTipVelocityOnOff",              0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerTipVelocityOnOff",            0, "Finger");
-    CLASS_ATTR_CATEGORY(c, "toolDimensionOnOff",                0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerDimensionOnOff",              0, "Finger");
-    CLASS_ATTR_CATEGORY(c, "toolTouchZoneOnOff",                0, "Tool");
-    CLASS_ATTR_CATEGORY(c, "fingerTouchZoneOnOff",              0, "Finger");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "gestureCircleOnOff",                0, "Gesture");
-    CLASS_ATTR_CATEGORY(c, "gestureKeyTapOnOff",                0, "Gesture");
-    CLASS_ATTR_CATEGORY(c, "gestureScreenTapOnOff",             0, "Gesture");
-    CLASS_ATTR_CATEGORY(c, "gestureSwipeOnOff",                 0, "Gesture");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "gestureCircleMainOnOff",            0, "Circle");
-    CLASS_ATTR_CATEGORY(c, "gestureCircleCenterOnOff",          0, "Circle");
-    CLASS_ATTR_CATEGORY(c, "gestureCircleCenterNormOnOff",      0, "Circle");
-    CLASS_ATTR_CATEGORY(c, "gestureCircleDataOnOff",            0, "Circle");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "gestureSwipeMainOnOff",             0, "Swipe");
-    CLASS_ATTR_CATEGORY(c, "gestureSwipePositionOnOff",         0, "Swipe");
-    CLASS_ATTR_CATEGORY(c, "gestureSwipePositionNormOnOff",     0, "Swipe");
-    CLASS_ATTR_CATEGORY(c, "gestureSwipeDirectionOnOff",        0, "Swipe");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "gestureKeyTapMainOnOff",            0, "KeyTap");
-    CLASS_ATTR_CATEGORY(c, "gestureKeyTapPositionOnOff",        0, "KeyTap");
-    CLASS_ATTR_CATEGORY(c, "gestureKeyTapPositionNormOnOff",    0, "KeyTap");
-    CLASS_ATTR_CATEGORY(c, "gestureKeyTapDirectionOnOff",       0, "KeyTap");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_CATEGORY(c, "gestureScreenTapMainOnOff",            0, "ScreenTap");
-    CLASS_ATTR_CATEGORY(c, "gestureScreenTapPositionOnOff",        0, "ScreenTap");
-    CLASS_ATTR_CATEGORY(c, "gestureScreenTapPositionNormOnOff",    0, "ScreenTap");
-    CLASS_ATTR_CATEGORY(c, "gestureScreenTapDirectionOnOff",       0, "ScreenTap");
     /*********************************************************************/
     //order of attributes
     CLASS_ATTR_ORDER(c, "frameHist",                            0, "1");
     CLASS_ATTR_ORDER(c, "allDegOnOff",                          0, "2");
+    ///////////////////////////////////////////////////////////////////////
+    CLASS_ATTR_ORDER(c, "imageOnOff",                           0, "3");    //RENUMBERING  NECCESSARY
+    CLASS_ATTR_ORDER(c, "imageDistortionOnOff",                 0, "3");
     ///////////////////////////////////////////////////////////////////////
     CLASS_ATTR_ORDER(c, "frameMainOnOff",                       0, "3");
     CLASS_ATTR_ORDER(c, "frameRotOnOff",                        0, "4");
@@ -705,6 +685,9 @@ int T_EXPORT main(void)
     CLASS_ATTR_ORDER(c, "handTranslationProb",                  0, "31");
     CLASS_ATTR_ORDER(c, "handRotationMatrixOnOff",              0, "32");
     CLASS_ATTR_ORDER(c, "handHorizontalPlaneOnOff",             0, "33");
+    //////2.x stuff
+    CLASS_ATTR_ORDER(c, "handBasisOnOff",                       0, "33");
+    //////
     ///////////////////////////////////////////////////////////////////////
     CLASS_ATTR_ORDER(c, "fingerMainOnOff",                      0, "34");
     CLASS_ATTR_ORDER(c, "fingerDirectionOnOff",                 0, "35");
@@ -761,11 +744,14 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     
 	x = (t_MRleap *)object_alloc((t_class *)MRleap_class);
     
-    object_post((t_object *)x, "MRleap 0.2.1 for The Leap 1.0.9");
+    object_post((t_object *)x, "MRleap 0.2.3 for The Leap 2.1");
     
     x->prevFrameID                      = 0;
     x->frameHist                        = 1;
     x->allDegOnOff                      = 0; //radians by default
+    ////////image
+    x->imageOnOff                       = false;
+    x->imageDistortionOnOff             = false;
     ////////frame
     x->frameRotProb                     = 0.4;
     x->frameMainOnOff                   = false;
@@ -805,6 +791,9 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->handRotationMatrix               = false;
     x->handHorizontalPlaneOnOff         = false;
     x->handPositionVelocityOnOff        = false;
+    ////2.x stuff
+    x->handBasisOnOff                   = false;
+    /////
     //////////pointable
     x->toolMainOnOff                    = false;
     x->fingerMainOnOff                  = false;
@@ -840,7 +829,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->gestureScreenTapPositionOnOff    = false;
     x->gestureScreenTapPositionNormOnOff= false;
     x->gestureScreenTapDirectionOnOff   = false;
-    
+
     
     
     ////////gesture attr default
@@ -857,6 +846,14 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->screenTapMinDistance             = 5;
     
     /////////outlets
+    x->matrix_nameLeft  = gensym("leapCameraLeft");
+    x->matrix_nameRight = gensym("leapCameraRight");
+    x->plane            = 0;
+    x->offsetcount      = 0;
+    x->prevDim[0]       = 0;
+    x->prevDim[1]       = 0;
+    
+    
     x->outletStart      = outlet_new((t_MRleap *)x, NULL);
     x->outletFrame      = outlet_new((t_MRleap *)x, NULL);
     x->outletHands      = outlet_new((t_MRleap *)x, NULL);
@@ -868,7 +865,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     
     // Create a controller
     x->leap = new Leap::Controller;
-
+    
     
     ///////genSyms
     
@@ -920,8 +917,25 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     
     //    Leap::Device testDevice;
     
+    x->m_clock = clock_new((t_MRleap *) x, (method)MRleap_checkLeapConnection);
+    
+    clock_fdelay(x->m_clock, 1000);
     
 	return (x);
+}
+/************************************/
+void MRleap_checkLeapConnection(t_MRleap *x)
+{
+    if (x->leap->isConnected()) {
+        
+        post_sym(x, gensym("Leap found and connected..."));
+        x->leap->setPolicyFlags(Leap::Controller::POLICY_IMAGES);
+    }
+    else {
+        
+        error_sym(x, gensym("No Leap found or unable to connect..."));
+        error_sym(x, gensym("reattempting to connect on bang..."));
+    }
 }
 /************************************/
 void MRleap_assist(t_MRleap *x, void *b, long m, long a, char *s)
@@ -958,8 +972,10 @@ void MRleap_assist(t_MRleap *x, void *b, long m, long a, char *s)
 /************************************/
 void MRleap_free(t_MRleap *x)
 {
-	if (x->leap)
+    if (x->leap)    {
 		delete (Leap::Controller *)(x->leap);
+    }
+    object_free(x->m_clock);
 }
 /************************************/
 void MRleap_bang(t_MRleap *x)
@@ -979,6 +995,12 @@ void MRleap_bang(t_MRleap *x)
                 return;
             }
             
+            /*************Image info****************/
+            MRleap_getImageData(x, frame);
+            
+            /**************************************/
+            //first get the image data, then bang for start of frame ->
+            //can use the bang to bang the matrix in the patch
             outlet_int(x->outletStart, (long)1);
             
             /*************Frame info****************/
@@ -1010,7 +1032,11 @@ void MRleap_bang(t_MRleap *x)
     }
     else if (!x->leap->isConnected())    {
         //try to connect again if connection failed
-        x->leap = new Leap::Controller;
+    
+        
+        jit_error_sym(x, gensym("Trying to connect to Leap..."));
+        
+        MRleap_checkLeapConnection(x);
         
 /* 
     //for testing output when I have no leap on me...
@@ -1196,7 +1222,7 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
     
     
     /////////////which hand??////////////////////
-    Leap::HandList handList = frame.hands();
+  /*  Leap::HandList handList = frame.hands();
 
     if (!handList.isEmpty())   {
         
@@ -1237,7 +1263,8 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
             
         }
  */
-    }
+//    }
+
 }
 /*
  
@@ -1266,6 +1293,140 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
  }
  */
 /************************************/
+void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
+{
+    
+    if (x->imageOnOff)  {
+        
+
+        Leap::ImageList images = frame.images();
+        //two cameras in the leap; index 0 = left camera; index 1 = right (when looking at it from the front, green light facing user
+        Leap::Image image   = images[0];
+        Leap::Image image2  = images[1];
+        
+        if (image.isValid() && image2.isValid()) {
+           
+            
+            MRleap_getImage(x, image, x->matrix_nameLeft);
+            
+            MRleap_getImage(x, image2, x->matrix_nameRight);
+        }
+        else    {
+            jit_error_sym(x, gensym("No valid images available from leap"));
+        }
+    }
+}
+/************************************/
+void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
+{
+    void *matrix;
+    long i,j;
+    long savelock = 0, offset0, offset1;
+    t_jit_matrix_info minfo;
+    char *bp, *p;
+    
+    
+    //find matrix
+    matrix = jit_object_findregistered(matrixName);
+    
+    if (matrix && jit_object_method(matrix, _jit_sym_class_jit_matrix)) {
+        
+        
+        savelock  = (long) jit_object_method(matrix,_jit_sym_lock, 1);
+        jit_object_method(matrix,_jit_sym_getinfo,&minfo);
+        jit_object_method(matrix,_jit_sym_getdata,&bp);
+        
+        
+        if ((!bp)||(x->plane >= minfo.planecount)||(x->plane < 0)) {
+
+            jit_error_sym(x, _jit_sym_err_calculate);
+            jit_object_method(matrix, _jit_sym_lock, savelock);
+            goto out;
+        }
+        
+//        if (x->prevDim[0] != image.width() || x->prevDim[1] != image.height())  {//needs to check for matrix name otherwise minfo will only update the first matrix!!!
+        
+            minfo.type          = _jit_sym_char;
+            minfo.dimcount      = 2;
+            minfo.planecount    = 1;
+            minfo.dim[0]        = image.width();
+            minfo.dim[1]        = image.height();
+            
+            jit_object_method(matrix, _jit_sym_setinfo, &minfo);
+            
+            x->prevDim[0] = image.width();
+            x->prevDim[1] = image.height();
+ //       }
+        
+
+        imageBufferLength = image.width() * image.height();
+        
+        post("width = %d   height = %d   length = %d    ", image.width(), image.height(), imageBufferLength);
+        
+        const unsigned char* image_buffer   = image.data();
+        
+        
+        //limited to filling at most into 2 dimensions per list
+        offset0 = (x->offsetcount>0)?x->offset[0]:0;
+        offset1 = (x->offsetcount>1)?x->offset[1]:0;
+        CLIP_ASSIGN(offset0, 0, minfo.dim[0]-1);
+        CLIP_ASSIGN(offset1, 0, minfo.dim[1]-1);
+        CLIP_ASSIGN(imageBufferLength,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
+        j = offset0 + offset1 * minfo.dim[0];
+        
+        bp += x->plane;
+        
+        for (i = 0; i < imageBufferLength; i++, j++) {
+            
+            p   = bp + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0];
+            
+             if (x->imageDistortionOnOff) {
+                 //apply texture map
+                 
+/*                 int targetWidth = 640;
+                 int targetHeight = 480;
+                 
+                 unsigned char brightness[4] = {0,0,0,255}; //An array to hold the rgba color components
+                 
+                 Leap::Vector input = Leap::Vector(image.data()/targetWidth, image.data()/targetHeight, 0);
+                 
+                 //Convert from normalized [0..1] to slope [-4..4]
+                 input.x = (input.x - image.rayOffsetX()) / image.rayScaleX();
+                 input.y = (input.y - image.rayOffsetY()) / image.rayScaleY();
+ */
+ 
+                 
+                 
+                *((uchar *)p)   = abs(image.data()[i] -255);
+             }
+            
+             else {
+                 
+             
+                *((uchar *)p)   = image_buffer[i];
+             }
+        }
+        
+        jit_object_method(matrix,_jit_sym_lock,savelock);
+    }
+    else {
+
+        jit_error_sym(x,_jit_sym_err_calculate);
+        goto out;
+    }
+    
+out:
+    
+    return;
+}
+/************************************
+void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
+{
+    const float * distortion_buffer = image.distortion();
+    
+    
+}
+/************************************/
 void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
 {
     
@@ -1280,20 +1441,24 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
             
             MRleap_assignHandID(x, hand);
             
-            long handID = hand.id();
+            long handID             = hand.id();
+            float handConfidence    =  hand.confidence();
             
             if(x->handMainOnOff)    {
           
-                t_atom handMain[6];
+                t_atom handMain[9];
                 
                 atom_setsym(handMain,       x->s_handMain);
                 atom_setlong(handMain+1,    handID);
                 atom_setlong(handMain+2,    x->curFrameID);
-                atom_setlong(handMain+3,    hand.timeVisible() * 1000); //sec -> ms
-                atom_setlong(handMain+4,    hand.fingers().count());
-                atom_setlong(handMain+5,    hand.tools().count());
+                atom_setfloat(handMain+3,   handConfidence);
+                atom_setlong(handMain+4,    hand.timeVisible() * 1000); //sec -> ms
+                atom_setfloat(handMain+5,   hand.grabStrength());
+                atom_setfloat(handMain+6,   hand.pinchStrength());
+                atom_setfloat(handMain+7,   hand.palmWidth()); //in mm
+                atom_setlong(handMain+8,    hand.tools().count());
                 
-                outlet_anything(x->outletHands, x->HAND, 6, handMain);
+                outlet_anything(x->outletHands, x->HAND, 9, handMain);
             }
             ////////////////position//////////
             if (x->handPositionOnOff) {
@@ -1311,32 +1476,34 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 
                 pos = MRleap_normalizeVec(x, frame, pos, x->handPositionNormOnOff);
 
-                t_atom handPos[6];
+                t_atom handPos[7];
  
                 atom_setsym(handPos,        x->s_position);
                 atom_setlong(handPos+1,     handID);
                 atom_setlong(handPos+2,     x->curFrameID);
-                atom_setfloat(handPos+3,    pos[0]);
-                atom_setfloat(handPos+4,    pos[1]);
-                atom_setfloat(handPos+5,    pos[2]);
+                atom_setfloat(handPos+3,    handConfidence);
+                atom_setfloat(handPos+4,    pos[0]);
+                atom_setfloat(handPos+5,    pos[1]);
+                atom_setfloat(handPos+6,    pos[2]);
                 
-                outlet_anything(x->outletHands, x->HAND, 6, handPos);
+                outlet_anything(x->outletHands, x->HAND, 7, handPos);
               
             }
             //////////////////////////////
             
             if (x->handPositionVelocityOnOff)   {
          
-                t_atom handVel[6];
+                t_atom handVel[7];
                 
                 atom_setsym(handVel,        x->s_velocity);
                 atom_setlong(handVel+1,     handID);
                 atom_setlong(handVel+2,     x->curFrameID);
-                atom_setfloat(handVel+3,    hand.palmVelocity()[0]);
-                atom_setfloat(handVel+4,    hand.palmVelocity()[1]);
-                atom_setfloat(handVel+5,    hand.palmVelocity()[2]);
+                atom_setfloat(handVel+3,    handConfidence);
+                atom_setfloat(handVel+4,    hand.palmVelocity()[0]);
+                atom_setfloat(handVel+5,    hand.palmVelocity()[1]);
+                atom_setfloat(handVel+6,    hand.palmVelocity()[2]);
             
-                outlet_anything(x->outletHands, x->HAND, 6, handVel);
+                outlet_anything(x->outletHands, x->HAND, 7, handVel);
             }
             
             ////////sphere////////////////
@@ -1344,103 +1511,108 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 
                 Leap::Vector sphere = MRleap_normalizeVec(x, frame, hand.sphereCenter(), x->handSphereNorm);
                 
-                t_atom handSphere[7];
+                t_atom handSphere[8];
                 
                 atom_setsym(handSphere,         x->s_sphere);
                 atom_setlong(handSphere+1,      handID);
                 atom_setlong(handSphere+2,      x->curFrameID);
-                atom_setfloat(handSphere+3,     hand.sphereRadius());
-                atom_setfloat(handSphere+4,     sphere[0]);
-                atom_setfloat(handSphere+5,     sphere[1]);
-                atom_setfloat(handSphere+6,     sphere[2]);
+                atom_setfloat(handSphere+3,     handConfidence);
+                atom_setfloat(handSphere+4,     hand.sphereRadius());
+                atom_setfloat(handSphere+5,     sphere[0]);
+                atom_setfloat(handSphere+6,     sphere[1]);
+                atom_setfloat(handSphere+7,     sphere[2]);
                 
-                outlet_anything(x->outletHands, x->HAND, 7, handSphere);
+                outlet_anything(x->outletHands, x->HAND, 8, handSphere);
             }
             ///////////rotation////////////////////
             float rotationProb = hand.rotationProbability(x->leap->frame(x->frameHist));
             
             if (rotationProb >= x->handRotationProb && x->handRotationOnOff == true)  {
                 
-                t_atom handRotCooked[6];
+                t_atom handRotCooked[7];
                 
                 atom_setsym(handRotCooked,       x->s_rotation);
                 atom_setlong(handRotCooked+1,    handID);
                 atom_setlong(handRotCooked+2,    x->curFrameID);
+                atom_setfloat(handRotCooked+3,     handConfidence);
                 
                 float whichAxis = MRleap_biggestRotAxis(x, hand.rotationAxis(x->leap->frame(x->frameHist)));
                 float rotationAngle  = -1;
                 
                 if (whichAxis == X_AXIS)    {
                     
-                    atom_setsym(handRotCooked+4,          x->s_x);
+                    atom_setsym(handRotCooked+5,          x->s_x);
                     rotationAngle = hand.rotationAngle(x->leap->frame(x->frameHist), Leap::Vector::xAxis());
                 }
                 else if (whichAxis == Y_AXIS)    {
                     
-                    atom_setsym(handRotCooked+4,          x->s_y);
+                    atom_setsym(handRotCooked+5,          x->s_y);
                     rotationAngle = hand.rotationAngle(x->leap->frame(x->frameHist), Leap::Vector::yAxis());
                 }
                 else if (whichAxis == Z_AXIS)    {
                     
-                    atom_setsym(handRotCooked+4,          x->s_z);
+                    atom_setsym(handRotCooked+5,          x->s_z);
                     rotationAngle = hand.rotationAngle(x->leap->frame(x->frameHist), Leap::Vector::zAxis());
                 }
                 
                 rotationAngle = rotationAngle * MRleap_RadDeg(x);
                 
-                atom_setfloat(handRotCooked+3,        rotationProb);
-                atom_setfloat(handRotCooked+5,        rotationAngle);
+                atom_setfloat(handRotCooked+4,        rotationProb);
+                atom_setfloat(handRotCooked+6,        rotationAngle);
                 
-                outlet_anything(x->outletHands, x->HAND, 6, handRotCooked);
+                outlet_anything(x->outletHands, x->HAND, 7, handRotCooked);
             }
             
             /////////////////////////////////
             if (x->handRotationRawOnOff)    {
                 
-                t_atom handRotRaw[10];
+                t_atom handRotRaw[11];
                 
                 atom_setsym(handRotRaw,          x->s_rotationRaw);
                 atom_setlong(handRotRaw+1,       handID);
                 atom_setlong(handRotRaw+2,       x->curFrameID);
-                atom_setfloat(handRotRaw+3,      rotationProb);
-                atom_setfloat(handRotRaw+4,      hand.rotationAxis(x->leap->frame(1))[0]);
-                atom_setfloat(handRotRaw+5,      hand.rotationAxis(x->leap->frame(1))[1]);
-                atom_setfloat(handRotRaw+6,      hand.rotationAxis(x->leap->frame(1))[2]);
-                atom_setfloat(handRotRaw+7,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::xAxis()) * MRleap_RadDeg(x));
-                atom_setfloat(handRotRaw+8,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::yAxis()) * MRleap_RadDeg(x));
-                atom_setfloat(handRotRaw+9,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::zAxis()) * MRleap_RadDeg(x));
+                atom_setfloat(handRotRaw+3,      handConfidence);
+                atom_setfloat(handRotRaw+4,      rotationProb);
+                atom_setfloat(handRotRaw+5,      hand.rotationAxis(x->leap->frame(1))[0]);
+                atom_setfloat(handRotRaw+6,      hand.rotationAxis(x->leap->frame(1))[1]);
+                atom_setfloat(handRotRaw+7,      hand.rotationAxis(x->leap->frame(1))[2]);
+                atom_setfloat(handRotRaw+8,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::xAxis()) * MRleap_RadDeg(x));
+                atom_setfloat(handRotRaw+9,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::yAxis()) * MRleap_RadDeg(x));
+                atom_setfloat(handRotRaw+10,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::zAxis()) * MRleap_RadDeg(x));
                 
                 
-                outlet_anything(x->outletHands, x->HAND, 10, handRotRaw);
+                outlet_anything(x->outletHands, x->HAND, 11, handRotRaw);
             }
             /////////////scale/////////////////////
             float scaleProb = hand.scaleProbability(x->leap->frame(x->frameHist));
             
             if (x->handScaleRawOnOff)  {
                 
-                t_atom handScaleRaw[5];
+                t_atom handScaleRaw[6];
                 
                 atom_setsym(handScaleRaw,           x->s_scaleRaw);
                 atom_setlong(handScaleRaw+1,        handID);
                 atom_setlong(handScaleRaw+2,        x->curFrameID);
-                atom_setfloat(handScaleRaw+3,       scaleProb);
-                atom_setfloat(handScaleRaw+4,       hand.scaleFactor(x->leap->frame(x->frameHist)));
+                atom_setfloat(handScaleRaw+3,       handConfidence);
+                atom_setfloat(handScaleRaw+4,       scaleProb);
+                atom_setfloat(handScaleRaw+5,       hand.scaleFactor(x->leap->frame(x->frameHist)));
                 
-                outlet_anything(x->outletHands, x->HAND, 5, handScaleRaw);
+                outlet_anything(x->outletHands, x->HAND, 6, handScaleRaw);
             }
             
             ///////////////////////////////////
             if (x->handScaleOnOff && scaleProb >= x->handScaleProb)  {
                 
-                t_atom handScale[5];
+                t_atom handScale[6];
                 
                 atom_setsym(handScale,      x->s_scale);
                 atom_setlong(handScale+1,   handID);
                 atom_setlong(handScale+2,   x->curFrameID);
-                atom_setfloat(handScale+3,  scaleProb);
-                atom_setfloat(handScale+4,  hand.scaleFactor(x->leap->frame(x->frameHist)));
+                atom_setfloat(handScale+3,    handConfidence);
+                atom_setfloat(handScale+4,  scaleProb);
+                atom_setfloat(handScale+5,  hand.scaleFactor(x->leap->frame(x->frameHist)));
                 
-                outlet_anything(x->outletHands, x->HAND, 5, handScale);
+                outlet_anything(x->outletHands, x->HAND, 6, handScale);
             }
             ////////////////////////////////
             
@@ -1453,33 +1625,35 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 
                 Leap::Vector trans = MRleap_normalizeVec(x, frame, hand.translation(x->leap->frame(x->frameHist)), x->handTranslationNormOnOff);
                 
-                t_atom handTranslationRaw[7];
+                t_atom handTranslationRaw[8];
                 
                 atom_setsym(handTranslationRaw,         x->s_translationRaw);
                 atom_setlong(handTranslationRaw+1,      handID);
                 atom_setlong(handTranslationRaw+2,      x->curFrameID);
-                atom_setfloat(handTranslationRaw+3,     translationProb);
-                atom_setfloat(handTranslationRaw+4,     trans.x);
-                atom_setfloat(handTranslationRaw+5,     trans.y);
-                atom_setfloat(handTranslationRaw+6,     trans.z);
+                atom_setfloat(handTranslationRaw+3,     handConfidence);
+                atom_setfloat(handTranslationRaw+4,     translationProb);
+                atom_setfloat(handTranslationRaw+5,     trans.x);
+                atom_setfloat(handTranslationRaw+6,     trans.y);
+                atom_setfloat(handTranslationRaw+7,     trans.z);
                 
-                outlet_anything(x->outletHands, x->HAND, 7, handTranslationRaw);
+                outlet_anything(x->outletHands, x->HAND, 8, handTranslationRaw);
             }
             
             if (x->handTranslationOnOff && x->handTranslationProb > translationProb)  {
                 
                 Leap::Vector trans = MRleap_normalizeVec(x, frame, hand.translation(x->leap->frame(x->frameHist)), x->handTranslationNormOnOff);
-                t_atom handTranslation[7];
+                t_atom handTranslation[8];
                 
                 atom_setsym(handTranslation,        x->s_translation);
                 atom_setlong(handTranslation+1,     handID);
                 atom_setlong(handTranslation+2,     x->curFrameID);
-                atom_setfloat(handTranslation+3,    translationProb);
-                atom_setfloat(handTranslation+4,    trans.x);
-                atom_setfloat(handTranslation+5,    trans.y);
-                atom_setfloat(handTranslation+6,    trans.z);
+                atom_setfloat(handTranslation+3 ,    handConfidence);
+                atom_setfloat(handTranslation+4,    translationProb);
+                atom_setfloat(handTranslation+5,    trans.x);
+                atom_setfloat(handTranslation+6,    trans.y);
+                atom_setfloat(handTranslation+7,    trans.z);
                 
-                outlet_anything(x->outletHands, x->HAND, 7, handTranslation);
+                outlet_anything(x->outletHands, x->HAND, 8, handTranslation);
             }
             ///////////////////////////////////////////////
             ///////////////matrix/////////////////////
@@ -1487,33 +1661,35 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
             if (x->handRotationMatrix) {
                 
                 Leap::FloatArray array = hand.rotationMatrix(x->leap->frame(x->frameHist)).toArray3x3();
-                t_atom handRotationMatrix[12];
+                t_atom handRotationMatrix[13];
                 
                 atom_setsym(handRotationMatrix,        x->s_rotationMatrix);
                 atom_setlong(handRotationMatrix+1,     handID);
                 atom_setlong(handRotationMatrix+2,     x->curFrameID);
+                atom_setfloat(handRotationMatrix+3,    handConfidence);
                 
-                for (int i = 3; i < 12; i++)    {
+                for (int i = 4; i < 13; i++)    {
                     
                     atom_setfloat(handRotationMatrix + i, array.m_array[i]);
                 }
                 
-                outlet_anything(x->outletHands, x->HAND, 12, handRotationMatrix);
+                outlet_anything(x->outletHands, x->HAND, 13, handRotationMatrix);
             }
             
             //////////////horizontal plane////////////
             if (x->handHorizontalPlaneOnOff)    {
                 
-                t_atom handPlane[6];
+                t_atom handPlane[7];
                 
                 atom_setsym(handPlane,          x->s_plane);
                 atom_setlong(handPlane+1,       handID);
                 atom_setlong(handPlane+2,       x->curFrameID);
-                atom_setfloat(handPlane+3,      hand.direction().pitch() * MRleap_RadDeg(x));
-                atom_setfloat(handPlane+4,      hand.direction().yaw()   * MRleap_RadDeg(x));
-                atom_setfloat(handPlane+5,      hand.palmNormal().roll() * MRleap_RadDeg(x));
+                atom_setfloat(handPlane+3,      handConfidence);
+                atom_setfloat(handPlane+4,      hand.direction().pitch() * MRleap_RadDeg(x));
+                atom_setfloat(handPlane+5,      hand.direction().yaw()   * MRleap_RadDeg(x));
+                atom_setfloat(handPlane+6,      hand.palmNormal().roll() * MRleap_RadDeg(x));
                 
-                outlet_anything(x->outletHands, x->HAND, 6, handPlane);
+                outlet_anything(x->outletHands, x->HAND, 7, handPlane);
             }
             
             /************************************/
@@ -1635,22 +1811,25 @@ void MRleap_getToolData(t_MRleap *x, Leap::Frame frame)
 /************************************/
 void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
 {
-    Leap::PointableList     pointables      = frame.pointables();
-    const int               numPointables   = pointables.count(); //what's the max?? (have seen up to 5 so far
+    Leap::FingerList        fingers      = frame.fingers();
+
+    const int               numFingers   = fingers.count(); //what's the max?? (have seen up to 5 so far
     
-    for(int i = 0; i < numPointables; ++i)  {
+    for(int i = 0; i < numFingers; ++i)  {
         
-        const Leap::Pointable point = pointables[i];
+        const Leap::Finger finger = fingers[i];
         
-        if (point.isValid()) {
+        if (finger.isValid()) {
             
-            if(point.isFinger())  {
+            if(finger.isFinger())  {
                 
 
-                MRleap_assignHandID(x, point.hand());
+                MRleap_assignHandID(x, finger.hand());
                 
-                long handID     = point.hand().id();
-                long pointID    = point.id();
+                long handID     = finger.hand().id();
+                long pointID    = finger.id();
+                
+ //               Leap::Bone              bone            = finger.bone();
                 
                 if(x->fingerMainOnOff)    {
                     
@@ -1660,8 +1839,8 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     atom_setlong(fingerMain+1,    pointID);
                     atom_setlong(fingerMain+2,    handID);
                     atom_setlong(fingerMain+3,    x->curFrameID);
-                    atom_setlong(fingerMain+4,    numPointables);
-                    atom_setfloat(fingerMain+5,   point.timeVisible() * 1000);//sec -> ms
+                    atom_setlong(fingerMain+4,    numFingers);
+                    atom_setfloat(fingerMain+5,   finger.timeVisible() * 1000);//sec -> ms
                     
                     outlet_anything(x->outletFingers, x->HAND, 6, fingerMain);
                 }
@@ -1673,9 +1852,9 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     atom_setlong(pointDirection+1,      pointID);
                     atom_setlong(pointDirection+2,      handID);
                     atom_setlong(pointDirection+3,      x->curFrameID);
-                    atom_setfloat(pointDirection+4,     point.direction().x);
-                    atom_setfloat(pointDirection+5,     point.direction().y);
-                    atom_setfloat(pointDirection+6,     point.direction().z);
+                    atom_setfloat(pointDirection+4,     finger.direction().x);
+                    atom_setfloat(pointDirection+5,     finger.direction().y);
+                    atom_setfloat(pointDirection+6,     finger.direction().z);
                     
                     outlet_anything(x->outletFingers, x->HAND, 7, pointDirection);
                 }
@@ -1683,7 +1862,7 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                 if (x->fingerTipPositionOnOff)    {
                     
                     
-                    Leap::Vector tip = MRleap_normalizeVec(x, frame, point.tipPosition(), x->fingerTipNormOnOff);
+                    Leap::Vector tip = MRleap_normalizeVec(x, frame, finger.tipPosition(), x->fingerTipNormOnOff);
                     
                     t_atom pointTip[7];
                     
@@ -1708,9 +1887,9 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     atom_setlong(pointVel+1,    pointID);
                     atom_setlong(pointVel+2,    handID);
                     atom_setlong(pointVel+3,    x->curFrameID);
-                    atom_setfloat(pointVel+4,   point.tipVelocity().x);
-                    atom_setfloat(pointVel+5,   point.tipVelocity().y);
-                    atom_setfloat(pointVel+6,   point.tipVelocity().z);
+                    atom_setfloat(pointVel+4,   finger.tipVelocity().x);
+                    atom_setfloat(pointVel+5,   finger.tipVelocity().y);
+                    atom_setfloat(pointVel+6,   finger.tipVelocity().z);
                     
                     outlet_anything(x->outletFingers, x->HAND, 7, pointVel);
                 }
@@ -1723,8 +1902,8 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     atom_setlong(pointDim+1,    pointID);
                     atom_setlong(pointDim+2,    handID);
                     atom_setlong(pointDim+3,    x->curFrameID);
-                    atom_setfloat(pointDim+4,   point.width());
-                    atom_setfloat(pointDim+5,   point.length());
+                    atom_setfloat(pointDim+4,   finger.width());
+                    atom_setfloat(pointDim+5,   finger.length());
                     
                     outlet_anything(x->outletFingers, x->HAND, 6, pointDim);
                 }
@@ -1736,8 +1915,8 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     atom_setlong(pointTouch+1,      pointID);
                     atom_setlong(pointTouch+2,      handID);
                     atom_setlong(pointTouch+3,      x->curFrameID);
-                    atom_setfloat(pointTouch+4,     point.touchDistance());
-                    atom_setlong(pointTouch+5,      point.touchZone());
+                    atom_setfloat(pointTouch+4,     finger.touchDistance());
+                    atom_setlong(pointTouch+5,      finger.touchZone());
                     
                     outlet_anything(x->outletFingers, x->HAND, 6, pointTouch);
                 }
@@ -2214,9 +2393,24 @@ t_max_err MRleap_gestureSwipeOnOff_set(t_MRleap *x, t_object *attr, long argc, t
 /************************************/
 void MRleap_assignHandID(t_MRleap *x, Leap::Hand hand)
 {
+    
+    if (hand.isLeft())  {
+        
+        x->HAND = x->LEFT;
+    }
+    else if (hand.isRight())    {
+        
+        x->HAND = x->RIGHT;
+    }
+    else {
+        
+        x->HAND = x->OTHER;
+    }
+    
+    
     /*x->leftmostID and x->rightmostID are calculated at the end of each getFrameData() function
      */
-    long handID = hand.id();
+/*    long handID = hand.id();
     
     if (handID == x->rightmostID)   {
         
@@ -2251,6 +2445,7 @@ void MRleap_assignHandID(t_MRleap *x, Leap::Hand hand)
     
     x->prevLeftmostID  = x->leftmostID;
     x->prevRightmostID = x->rightmostID;
+ */
 }
 /************************************/
 /************************************
