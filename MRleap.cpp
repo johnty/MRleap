@@ -59,7 +59,7 @@ const float screenTapMinDistanceDef         = 5;
 
 long imageBufferLength                      = 0;
 
-const std::string fingerNames[] = {"Thumb", "Index", "Middle", "Ring", "Pinky"};
+
 const std::string boneNames[] = {"Metacarpal", "Proximal", "Middle", "Distal"};
 const std::string stateNames[] = {"STATE_INVALID", "STATE_START", "STATE_UPDATE", "STATE_END"};
 /************************************/
@@ -128,6 +128,13 @@ typedef struct _MRleap
     float               handRotationProb;
     float               handScaleProb;
     float               handTranslationProb;
+    //////Arm
+    long                armBasisOnOff;
+    long                armCenterOnOff;
+    long                armDirectionOnOff;
+    long                armElbowPositionOnOff;
+    long                armWristPositionOnOff;
+    long                armWidthOnOff;
     //////pointables
     long                toolMainOnOff;
     long                fingerMainOnOff;
@@ -143,12 +150,14 @@ typedef struct _MRleap
     long                fingerDimensionOnOff;
     long                toolTouchZoneOnOff;
     long                fingerTouchZoneOnOff;
-    
+    //////fingers 2x
+    long                fingerIsExtendedOnOff;
     ///////////////
     /////outlets
     void                *outletStart;
 	void                *outletFrame;
     void                *outletHands;
+    void                *outletArms;
     void                *outletTools;
     void                *outletFingers;
     void                *outletGestures;
@@ -245,7 +254,13 @@ typedef struct _MRleap
     t_symbol            *s_swipePosition;
     t_symbol            *s_swipeDirection;
     t_symbol            *s_basis;
+    t_symbol            *s_center;
+    t_symbol            *s_elbowPosition;
+    t_symbol            *s_wristPosition;
+    t_symbol            *s_width;
+    t_symbol            *s_extended;
     
+    t_symbol            *fingerNames[5];
     /****************************************************/
     /****************************************************/
     //          JITTER STUFF
@@ -265,7 +280,6 @@ typedef struct _MRleap
 } t_MRleap;
 
 /************************************/
-
 void *MRleap_new(t_symbol *s, long argc, t_atom *argv);
 void MRleap_free(t_MRleap *x);
 void MRleap_assist(t_MRleap *x, void *b, long m, long a, char *s);
@@ -283,6 +297,7 @@ void MRleap_processCircleData(t_MRleap *x,      Leap::Frame frame, Leap::Gesture
 void MRleap_processKeyTapData(t_MRleap *x,      Leap::Frame frame, Leap::Gesture gesture);
 void MRleap_processScreenTapData(t_MRleap *x,   Leap::Frame frame, Leap::Gesture gesture);
 void MRleap_processSwipeData(t_MRleap *x,       Leap::Frame frame, Leap::Gesture gesture);
+void MRleap_getArmData(t_MRleap *x,             Leap::Frame frame);
 
 void MRleap_gestureResetAll(t_MRleap *x);
 /****************************************************/
@@ -485,6 +500,30 @@ int T_EXPORT main(void)
     CLASS_ATTR_STYLE_LABEL(c, "handBasisOnOff", 0, "onoff", "HandBasisOnOff");
     CLASS_ATTR_SAVE(c,"handBasisOnOff", 0);
     /////////////////////
+    /******************************ARM*************************************/
+    CLASS_ATTR_LONG(c, "armBasisOnOff", 0, t_MRleap, armBasisOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armBasisOnOff", 0, "onoff", "ArmBasisOnOff");
+    CLASS_ATTR_SAVE(c,"armBasisOnOff", 0);
+    
+    CLASS_ATTR_LONG(c, "armCenterOnOff", 0, t_MRleap, armCenterOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armCenterOnOff", 0, "onoff", "ArmCenterOnOff");
+    CLASS_ATTR_SAVE(c,"armCenterOnOff", 0);
+    
+    CLASS_ATTR_LONG(c, "armDirectionOnOff", 0, t_MRleap, armDirectionOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armDirectionOnOff", 0, "onoff", "ArmDirectionOnOff");
+    CLASS_ATTR_SAVE(c,"armDirectionOnOff", 0);
+    
+    CLASS_ATTR_LONG(c, "armElbowPositionOnOff", 0, t_MRleap, armElbowPositionOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armElbowPositionOnOff", 0, "onoff", "ArmElbowPositionOnOff");
+    CLASS_ATTR_SAVE(c,"armElbowPositionOnOff", 0);
+    
+    CLASS_ATTR_LONG(c, "armWristPositionOnOff", 0, t_MRleap, armWristPositionOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armWristPositionOnOff", 0, "onoff", "ArmWristPositionOnOff");
+    CLASS_ATTR_SAVE(c,"armWristPositionOnOff", 0);
+    
+    CLASS_ATTR_LONG(c, "armWidthOnOff", 0, t_MRleap, armWidthOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armWidthOnOff", 0, "onoff", "ArmWidthOnOff");
+    CLASS_ATTR_SAVE(c,"armWidthOnOff", 0);
     /*********************************************************************/
     /*****************************Pointalbes******************************/
     CLASS_ATTR_LONG(c, "toolMainOnOff", 0, t_MRleap, toolMainOnOff);
@@ -542,6 +581,10 @@ int T_EXPORT main(void)
     CLASS_ATTR_LONG(c, "fingerTouchZoneOnOff", 0, t_MRleap, fingerTouchZoneOnOff);
 	CLASS_ATTR_STYLE_LABEL(c, "fingerTouchZoneOnOff", 0, "onoff", "FingerTouch ");
 	CLASS_ATTR_SAVE(c,"fingerTouchZoneOnOff", 0);
+    /****************************Finger 2.x*********************************/
+    CLASS_ATTR_LONG(c, "fingerIsExtendedOnOff", 0, t_MRleap, fingerIsExtendedOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "fingerIsExtendedOnOff", 0, "onoff", "FingerIsExtendedOnOff ");
+    CLASS_ATTR_SAVE(c,"fingerIsExtendedOnOff", 0);
     /*********************************************************************/
     /*************************Gesture enable******************************/
     CLASS_ATTR_LONG(c, "gestureCircleOnOff", 0, t_MRleap, gestureCircleOnOff);
@@ -649,86 +692,96 @@ int T_EXPORT main(void)
     CLASS_ATTR_ORDER(c, "allDegOnOff",                          0, "2");
     ///////////////////////////////////////////////////////////////////////
     CLASS_ATTR_ORDER(c, "imageOnOff",                           0, "3");    //RENUMBERING  NECCESSARY
-    CLASS_ATTR_ORDER(c, "imageDistortionOnOff",                 0, "3");
+    CLASS_ATTR_ORDER(c, "imageDistortionOnOff",                 0, "4");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "frameMainOnOff",                       0, "3");
-    CLASS_ATTR_ORDER(c, "frameRotOnOff",                        0, "4");
-    CLASS_ATTR_ORDER(c, "frameRotRawOnOff",                     0, "5");
-    CLASS_ATTR_ORDER(c, "frameRotProb",                         0, "6");
-    CLASS_ATTR_ORDER(c, "frameScaleOnOff",                      0, "7");
-    CLASS_ATTR_ORDER(c, "frameScaleRawOnOff",                   0, "8");
-    CLASS_ATTR_ORDER(c, "frameScaleProb",                       0, "9");
-    CLASS_ATTR_ORDER(c, "frameTranslationOnOff",                0, "10");
-    CLASS_ATTR_ORDER(c, "frameTranslationRawOnOff",             0, "11");
-    CLASS_ATTR_ORDER(c, "frameTranslationNormOnOff",            0, "12");
-    CLASS_ATTR_ORDER(c, "frameTranslationProb",                 0, "13");
-    CLASS_ATTR_ORDER(c, "frameRotationMatrixOnOff",             0, "14");
+    CLASS_ATTR_ORDER(c, "frameMainOnOff",                       0, "5");
+    CLASS_ATTR_ORDER(c, "frameRotOnOff",                        0, "6");
+    CLASS_ATTR_ORDER(c, "frameRotRawOnOff",                     0, "7");
+    CLASS_ATTR_ORDER(c, "frameRotProb",                         0, "8");
+    CLASS_ATTR_ORDER(c, "frameScaleOnOff",                      0, "9");
+    CLASS_ATTR_ORDER(c, "frameScaleRawOnOff",                   0, "10");
+    CLASS_ATTR_ORDER(c, "frameScaleProb",                       0, "11");
+    CLASS_ATTR_ORDER(c, "frameTranslationOnOff",                0, "12");
+    CLASS_ATTR_ORDER(c, "frameTranslationRawOnOff",             0, "13");
+    CLASS_ATTR_ORDER(c, "frameTranslationNormOnOff",            0, "14");
+    CLASS_ATTR_ORDER(c, "frameTranslationProb",                 0, "15");
+    CLASS_ATTR_ORDER(c, "frameRotationMatrixOnOff",             0, "16");
 //    CLASS_ATTR_ORDER(c, "rightmostOnOff",                       0, "14");
 //    CLASS_ATTR_ORDER(c, "leftmostOnOff",                        0, "14");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "handMainOnOff",                        0, "15");
-    CLASS_ATTR_ORDER(c, "handSphereOnOff",                      0, "16");
-    CLASS_ATTR_ORDER(c, "handSphereNormOnOff",                  0, "17");
-    CLASS_ATTR_ORDER(c, "handPositionOnOff",                    0, "18");
-    CLASS_ATTR_ORDER(c, "handPositionNormOnOff",                0, "19");
-    CLASS_ATTR_ORDER(c, "handPositionStabilizationOnOff",       0, "20");
-    CLASS_ATTR_ORDER(c, "handPositionVelocityOnOff",            0, "21");
-    CLASS_ATTR_ORDER(c, "handRotationOnOff",                    0, "22");
-    CLASS_ATTR_ORDER(c, "handRotationRawOnOff",                 0, "23");
-    CLASS_ATTR_ORDER(c, "handRotationProb",                     0, "24");
-    CLASS_ATTR_ORDER(c, "handScaleOnOff",                       0, "25");
-    CLASS_ATTR_ORDER(c, "handScaleRawOnOff",                    0, "26");
-    CLASS_ATTR_ORDER(c, "handScaleProb",                        0, "27");
-    CLASS_ATTR_ORDER(c, "handTranslationOnOff",                 0, "28");
-    CLASS_ATTR_ORDER(c, "handTranslationRawOnOff",              0, "29");
-    CLASS_ATTR_ORDER(c, "handTranslationNormOnOff",             0, "30");
-    CLASS_ATTR_ORDER(c, "handTranslationProb",                  0, "31");
-    CLASS_ATTR_ORDER(c, "handRotationMatrixOnOff",              0, "32");
-    CLASS_ATTR_ORDER(c, "handHorizontalPlaneOnOff",             0, "33");
+    CLASS_ATTR_ORDER(c, "handMainOnOff",                        0, "17");
+    CLASS_ATTR_ORDER(c, "handSphereOnOff",                      0, "18");
+    CLASS_ATTR_ORDER(c, "handSphereNormOnOff",                  0, "19");
+    CLASS_ATTR_ORDER(c, "handPositionOnOff",                    0, "20");
+    CLASS_ATTR_ORDER(c, "handPositionNormOnOff",                0, "21");
+    CLASS_ATTR_ORDER(c, "handPositionStabilizationOnOff",       0, "22");
+    CLASS_ATTR_ORDER(c, "handPositionVelocityOnOff",            0, "23");
+    CLASS_ATTR_ORDER(c, "handRotationOnOff",                    0, "24");
+    CLASS_ATTR_ORDER(c, "handRotationRawOnOff",                 0, "25");
+    CLASS_ATTR_ORDER(c, "handRotationProb",                     0, "26");
+    CLASS_ATTR_ORDER(c, "handScaleOnOff",                       0, "27");
+    CLASS_ATTR_ORDER(c, "handScaleRawOnOff",                    0, "28");
+    CLASS_ATTR_ORDER(c, "handScaleProb",                        0, "29");
+    CLASS_ATTR_ORDER(c, "handTranslationOnOff",                 0, "30");
+    CLASS_ATTR_ORDER(c, "handTranslationRawOnOff",              0, "31");
+    CLASS_ATTR_ORDER(c, "handTranslationNormOnOff",             0, "32");
+    CLASS_ATTR_ORDER(c, "handTranslationProb",                  0, "33");
+    CLASS_ATTR_ORDER(c, "handRotationMatrixOnOff",              0, "34");
+    CLASS_ATTR_ORDER(c, "handHorizontalPlaneOnOff",             0, "35");
     //////2.x stuff
-    CLASS_ATTR_ORDER(c, "handBasisOnOff",                       0, "33");
+    CLASS_ATTR_ORDER(c, "handBasisOnOff",                       0, "36");
     //////
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "fingerMainOnOff",                      0, "34");
-    CLASS_ATTR_ORDER(c, "fingerDirectionOnOff",                 0, "35");
-    CLASS_ATTR_ORDER(c, "fingerTipPositionOnOff",               0, "36");
-    CLASS_ATTR_ORDER(c, "fingerTipNormOnOff",                   0, "37");
-    CLASS_ATTR_ORDER(c, "fingerTipVelocityOnOff",               0, "38");
-    CLASS_ATTR_ORDER(c, "fingerDimensionOnOff",                 0, "39");
-    CLASS_ATTR_ORDER(c, "fingerTouchZoneOnOff",                 0, "40");
+    CLASS_ATTR_ORDER(c, "armBasisOnOff",                        0, "37");
+    CLASS_ATTR_ORDER(c, "armCenterOnOff",                       0, "38");
+    CLASS_ATTR_ORDER(c, "armDirectionOnOff",                    0, "39");
+    CLASS_ATTR_ORDER(c, "armElbowPositionOnOff",                0, "40");
+    CLASS_ATTR_ORDER(c, "armWristPositionOnOff",                0, "41");
+    CLASS_ATTR_ORDER(c, "armWidthOnOff",                        0, "42");
+    
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "toolMainOnOff",                        0, "41");
-    CLASS_ATTR_ORDER(c, "toolDirectionOnOff",                   0, "42");
-    CLASS_ATTR_ORDER(c, "toolTipPositionOnOff",                 0, "43");
-    CLASS_ATTR_ORDER(c, "toolTipNormOnOff",                     0, "44");
-    CLASS_ATTR_ORDER(c, "toolTipVelocityOnOff",                 0, "45");
-    CLASS_ATTR_ORDER(c, "toolDimensionOnOff",                   0, "46");
-    CLASS_ATTR_ORDER(c, "toolTouchZoneOnOff",                   0, "47");
+    CLASS_ATTR_ORDER(c, "fingerMainOnOff",                      0, "43");
+    CLASS_ATTR_ORDER(c, "fingerDirectionOnOff",                 0, "44");
+    CLASS_ATTR_ORDER(c, "fingerTipPositionOnOff",               0, "45");
+    CLASS_ATTR_ORDER(c, "fingerTipNormOnOff",                   0, "46");
+    CLASS_ATTR_ORDER(c, "fingerTipVelocityOnOff",               0, "47");
+    CLASS_ATTR_ORDER(c, "fingerDimensionOnOff",                 0, "48");
+    CLASS_ATTR_ORDER(c, "fingerTouchZoneOnOff",                 0, "49");
+    ///////2.x stuff
+    CLASS_ATTR_ORDER(c, "fingerIsExtendedOnOff",                0, "50");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureCircleOnOff",                   0, "48");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapOnOff",                   0, "49");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapOnOff",                0, "50");
-    CLASS_ATTR_ORDER(c, "gestureSwipeOnOff",                    0, "51");
+    CLASS_ATTR_ORDER(c, "toolMainOnOff",                        0, "51");
+    CLASS_ATTR_ORDER(c, "toolDirectionOnOff",                   0, "52");
+    CLASS_ATTR_ORDER(c, "toolTipPositionOnOff",                 0, "53");
+    CLASS_ATTR_ORDER(c, "toolTipNormOnOff",                     0, "54");
+    CLASS_ATTR_ORDER(c, "toolTipVelocityOnOff",                 0, "55");
+    CLASS_ATTR_ORDER(c, "toolDimensionOnOff",                   0, "56");
+    CLASS_ATTR_ORDER(c, "toolTouchZoneOnOff",                   0, "57");
+    //////////////////////////////////////////////////////////////////////
+    CLASS_ATTR_ORDER(c, "gestureCircleOnOff",                   0, "58");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapOnOff",                   0, "59");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapOnOff",                0, "60");
+    CLASS_ATTR_ORDER(c, "gestureSwipeOnOff",                    0, "61");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureCircleMainOnOff",               0, "52");
-    CLASS_ATTR_ORDER(c, "gestureCircleCenterOnOff",             0, "53");
-    CLASS_ATTR_ORDER(c, "gestureCircleCenterNormOnOff",         0, "54");
-    CLASS_ATTR_ORDER(c, "gestureCircleDataOnOff",               0, "55");
+    CLASS_ATTR_ORDER(c, "gestureCircleMainOnOff",               0, "62");
+    CLASS_ATTR_ORDER(c, "gestureCircleCenterOnOff",             0, "63");
+    CLASS_ATTR_ORDER(c, "gestureCircleCenterNormOnOff",         0, "64");
+    CLASS_ATTR_ORDER(c, "gestureCircleDataOnOff",               0, "65");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureSwipeMainOnOff",                0, "56");
-    CLASS_ATTR_ORDER(c, "gestureSwipePositionOnOff",            0, "57");
-    CLASS_ATTR_ORDER(c, "gestureSwipePositionNormOnOff",        0, "58");
-    CLASS_ATTR_ORDER(c, "gestureSwipeDirectionOnOff",           0, "59");
+    CLASS_ATTR_ORDER(c, "gestureSwipeMainOnOff",                0, "66");
+    CLASS_ATTR_ORDER(c, "gestureSwipePositionOnOff",            0, "67");
+    CLASS_ATTR_ORDER(c, "gestureSwipePositionNormOnOff",        0, "68");
+    CLASS_ATTR_ORDER(c, "gestureSwipeDirectionOnOff",           0, "69");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureKeyTapMainOnOff",               0, "60");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionOnOff",           0, "61");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionNormOnOff",       0, "62");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapDirectionOnOff",          0, "63");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapMainOnOff",               0, "70");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionOnOff",           0, "71");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionNormOnOff",       0, "72");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapDirectionOnOff",          0, "73");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureScreenTapMainOnOff",            0, "64");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionOnOff",        0, "65");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionNormOnOff",    0, "66");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapDirectionOnOff",       0, "67");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapMainOnOff",            0, "74");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionOnOff",        0, "75");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionNormOnOff",    0, "76");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapDirectionOnOff",       0, "77");
     /*********************************************************************/
     
 	class_register(CLASS_BOX, c);
@@ -794,6 +847,13 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     ////2.x stuff
     x->handBasisOnOff                   = false;
     /////
+    //////Arm
+    x->armBasisOnOff                    = false;
+    x->armCenterOnOff                   = false;
+    x->armDirectionOnOff                = false;
+    x->armElbowPositionOnOff            = false;
+    x->armWristPositionOnOff            = false;
+    x->armWidthOnOff                    = false;
     //////////pointable
     x->toolMainOnOff                    = false;
     x->fingerMainOnOff                  = false;
@@ -809,6 +869,8 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->fingerDimensionOnOff             = false;
     x->toolTouchZoneOnOff               = false;
     x->fingerTouchZoneOnOff             = false;
+    /////////fingers 2.x
+    x->fingerIsExtendedOnOff            = false;
     //////////gestures
     x->gestureCircleMainOnOff           = false;
     x->gestureCircleCenterOnOff         = false;
@@ -857,6 +919,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->outletStart      = outlet_new((t_MRleap *)x, NULL);
     x->outletFrame      = outlet_new((t_MRleap *)x, NULL);
     x->outletHands      = outlet_new((t_MRleap *)x, NULL);
+    x->outletArms       = outlet_new((t_MRleap *)x, NULL);
     x->outletTools      = outlet_new((t_MRleap *)x, NULL);
     x->outletFingers    = outlet_new((t_MRleap *)x, NULL);
     x->outletGestures   = outlet_new((t_MRleap *)x, NULL);
@@ -889,7 +952,12 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->s_direction              = gensym("direction");
     x->s_velocity               = gensym("velocity");
     x->s_basis                  = gensym("basis");
-     
+    x->s_center                 = gensym("center");
+    x->s_elbowPosition          = gensym("elbowPosition");
+    x->s_wristPosition          = gensym("wristPosition");
+    x->s_width                  = gensym("width");
+    x->s_extended               = gensym("extended");
+    
     x->s_tip                    = gensym("tip");
     x->s_tipVelocity            = gensym("tipVelocity");
     x->s_tipDimension           = gensym("tipDimension");
@@ -906,6 +974,13 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->s_swipeMain              = gensym("swipeMain");
     x->s_swipePosition          = gensym("swipePosition");
     x->s_swipeDirection         = gensym("swipeDirection");
+    
+    
+    x->fingerNames[0]           = gensym("Thumb");
+    x->fingerNames[1]           = gensym("Index");
+    x->fingerNames[2]           = gensym("Middle");
+    x->fingerNames[3]           = gensym("Ring");
+    x->fingerNames[4]           = gensym("Pinky");
     
 
     x->RIGHT = gensym("rightmost");
@@ -957,14 +1032,16 @@ void MRleap_assist(t_MRleap *x, void *b, long m, long a, char *s)
             case 2:
                 sprintf(s, "Tools");
                 break;
-                
             case 3:
-                sprintf(s, "Hands");
+                sprintf(s, "Arms");
                 break;
             case 4:
-                sprintf(s, "Frame");
+                sprintf(s, "Hands");
                 break;
             case 5:
+                sprintf(s, "Frame");
+                break;
+            case 6:
                 sprintf(s, "frame start/end [1/0]");
                 break;
         }
@@ -1013,6 +1090,8 @@ void MRleap_bang(t_MRleap *x)
                 
                 //Process hands...
                 MRleap_getHandData(x, frame);
+                
+                MRleap_getArmData(x, frame);
             }
             /***************Pointables info****************/
             if (!frame.pointables().isEmpty()) {
@@ -1066,14 +1145,9 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
     
     if(x->frameMainOnOff)    {
         
-        //leftmost()
-        //righmost()
-        //frontmost()
+      
         /***************Frame info*********************/
         //output frame info orientation translation etc....
-        
-        //              float framePeriod = frame.timestamp() - x->leap->frame(1).timestamp();
-        
         
         t_atom frameMain[4];
         atom_setlong(frameMain,     frame.id());
@@ -1084,7 +1158,6 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
         outlet_anything(x->outletFrame, x->s_frameMain, 4, frameMain);
         /////////////////////////////////////////////
     }
-    
     
     ///////////////frame rotation//////////////////
     ////////////////////////////////
@@ -1348,13 +1421,6 @@ out:
     
     return;
 }
-/************************************
-void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
-{
-    const float * distortion_buffer = image.distortion();
-    
-    
-}
 /************************************/
 void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
 {
@@ -1371,7 +1437,7 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
             MRleap_assignHandID(x, hand);
             
             long handID             = hand.id();
-            float handConfidence    =  hand.confidence();
+            float handConfidence    = hand.confidence();
             
             if(x->handMainOnOff)    {
           
@@ -1648,6 +1714,125 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
     }
 }
 /************************************/
+void MRleap_getArmData(t_MRleap *x, Leap::Frame frame)
+{
+    
+    Leap::HandList          hands       = frame.hands();
+    const int               numHands    = hands.count(); //what's the max?? (have seen up to 5 so far
+    
+    for(int i = 0; i < numHands; ++i)  {
+    
+        Leap::Arm arm = hands[i].arm();
+        Leap::Hand  hand = hands[i];
+        
+        if (arm.isValid())  {
+        
+            long handID             = hand.id();
+            
+            if (x->armBasisOnOff)   {
+                
+                Leap::FloatArray array = arm.basis().toArray3x3();
+                
+                t_atom armBasis[12];
+                
+                atom_setsym(armBasis,          x->s_basis);
+                atom_setlong(armBasis+1,       handID);
+                atom_setlong(armBasis+2,       x->curFrameID);
+                
+                for (int i = 3; i < 13; i++)    {
+                    
+                    atom_setfloat(armBasis + i, array.m_array[i]);
+                }
+                
+                
+                outlet_anything(x->outletArms, x->HAND, 12, armBasis);
+            }
+            
+            if (x->armCenterOnOff)  {
+                
+                Leap::Vector center = arm.center();
+                
+                t_atom armCenter[6];
+                
+                atom_setsym(armCenter,      x->s_center);
+                atom_setlong(armCenter+1,   handID);
+                atom_setlong(armCenter+2,   x->curFrameID);
+                atom_setlong(armCenter+3,   center.x);
+                atom_setlong(armCenter+4,   center.z);
+                atom_setlong(armCenter+5,   center.x);
+                
+                outlet_anything(x->outletArms, x->HAND, 6, armCenter);
+            }
+            
+            if (x->armDirectionOnOff)   {
+             
+                Leap::Vector direction = arm.center();
+                
+                t_atom armDirection[6];
+                
+                atom_setsym(armDirection,      x->s_direction);
+                atom_setlong(armDirection+1,   handID);
+                atom_setlong(armDirection+2,   x->curFrameID);
+                atom_setlong(armDirection+3,   direction.x);
+                atom_setlong(armDirection+4,   direction.z);
+                atom_setlong(armDirection+5,   direction.x);
+                
+                outlet_anything(x->outletArms, x->HAND, 6, armDirection);
+
+            }
+            
+            if (x->armElbowPositionOnOff)   {
+                
+                Leap::Vector position = arm.elbowPosition();
+                
+                t_atom elbowPosition[6];
+                
+                atom_setsym(elbowPosition,      x->s_elbowPosition);
+                atom_setlong(elbowPosition+1,   handID);
+                atom_setlong(elbowPosition+2,   x->curFrameID);
+                atom_setlong(elbowPosition+3,   position.x);
+                atom_setlong(elbowPosition+4,   position.z);
+                atom_setlong(elbowPosition+5,   position.x);
+                
+                outlet_anything(x->outletArms, x->HAND, 6, elbowPosition);
+            }
+            
+            if (x->armWristPositionOnOff)   {
+                
+                Leap::Vector position = arm.wristPosition();
+                
+                t_atom wristPosition[6];
+                
+                atom_setsym(wristPosition,      x->s_wristPosition);
+                atom_setlong(wristPosition+1,   handID);
+                atom_setlong(wristPosition+2,   x->curFrameID);
+                atom_setlong(wristPosition+3,   position.x);
+                atom_setlong(wristPosition+4,   position.z);
+                atom_setlong(wristPosition+5,   position.x);
+                
+                outlet_anything(x->outletArms, x->HAND, 6, wristPosition);
+            }
+            
+            if (x->armWidthOnOff)   {
+                
+                Leap::Vector wristPosition = arm.wristPosition();
+                Leap::Vector elbowPosition = arm.elbowPosition();
+                
+                Leap::Vector displacement = elbowPosition - wristPosition;
+                
+                t_atom width[4];
+                
+                atom_setsym(width,      x->s_width);
+                atom_setlong(width+1,   handID);
+                atom_setlong(width+2,   x->curFrameID);
+                atom_setlong(width+3,   displacement.magnitude());
+                
+                outlet_anything(x->outletArms, x->HAND, 4, width);
+            }
+        }
+    }
+}
+/************************************/
 void MRleap_getToolData(t_MRleap *x, Leap::Frame frame)
 {
     Leap::PointableList     pointables      = frame.pointables();
@@ -1763,8 +1948,8 @@ void MRleap_getToolData(t_MRleap *x, Leap::Frame frame)
 void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
 {
     Leap::FingerList        fingers      = frame.fingers();
-
     const int               numFingers   = fingers.count(); //now always 5 with new API
+    
     
     for(int i = 0; i < numFingers; ++i)  {
         
@@ -1780,33 +1965,35 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                 long handID     = finger.hand().id();
                 long pointID    = finger.id();
                 
- //               Leap::Bone              bone            = finger.bone();
                 
                 if(x->fingerMainOnOff)    {
                     
-                    t_atom fingerMain[5];
+                    t_atom fingerMain[6];
                 
                     atom_setsym(fingerMain,       x->s_fingerMain);
                     atom_setlong(fingerMain+1,    pointID);
                     atom_setlong(fingerMain+2,    handID);
                     atom_setlong(fingerMain+3,    x->curFrameID);
-                    atom_setfloat(fingerMain+4,   finger.timeVisible() * 1000);//sec -> ms
+                    atom_setsym(fingerMain+4,     x->fingerNames[finger.type()]);
+                    atom_setfloat(fingerMain+5,   finger.timeVisible() * 1000);//sec -> ms
+                   
                     
-                    outlet_anything(x->outletFingers, x->HAND, 5, fingerMain);
+                    outlet_anything(x->outletFingers, x->HAND, 6, fingerMain);
                 }
                 /////////////direction///////////////
                 if (x->fingerDirectionOnOff) {
-                    t_atom pointDirection[7];
+                    t_atom pointDirection[8];
                     
                     atom_setsym(pointDirection,         x->s_direction);
                     atom_setlong(pointDirection+1,      pointID);
                     atom_setlong(pointDirection+2,      handID);
                     atom_setlong(pointDirection+3,      x->curFrameID);
-                    atom_setfloat(pointDirection+4,     finger.direction().x);
-                    atom_setfloat(pointDirection+5,     finger.direction().y);
-                    atom_setfloat(pointDirection+6,     finger.direction().z);
+                    atom_setsym(pointDirection+4,       x->fingerNames[finger.type()]);
+                    atom_setfloat(pointDirection+5,     finger.direction().x);
+                    atom_setfloat(pointDirection+6,     finger.direction().y);
+                    atom_setfloat(pointDirection+7,     finger.direction().z);
                     
-                    outlet_anything(x->outletFingers, x->HAND, 7, pointDirection);
+                    outlet_anything(x->outletFingers, x->HAND, 8, pointDirection);
                 }
                 /////////////tip///////////////
                 if (x->fingerTipPositionOnOff)    {
@@ -1814,62 +2001,82 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     
                     Leap::Vector tip = MRleap_normalizeVec(x, frame, finger.tipPosition(), x->fingerTipNormOnOff);
                     
-                    t_atom pointTip[7];
+                    t_atom pointTip[8];
                     
                     atom_setsym(pointTip,       x->s_tip);
                     atom_setlong(pointTip+1,    pointID);
                     atom_setlong(pointTip+2,    handID);
                     atom_setlong(pointTip+3,    x->curFrameID);
-                    atom_setfloat(pointTip+4,   tip.x);
-                    atom_setfloat(pointTip+5,   tip.y);
-                    atom_setfloat(pointTip+6,   tip.z);
+                    atom_setsym(pointTip+4,     x->fingerNames[finger.type()]);
+                    atom_setfloat(pointTip+5,   tip.x);
+                    atom_setfloat(pointTip+6,   tip.y);
+                    atom_setfloat(pointTip+7,   tip.z);
                     
-                    outlet_anything(x->outletFingers, x->HAND, 7, pointTip);
+                    outlet_anything(x->outletFingers, x->HAND, 8, pointTip);
                     
                 }
                 /////////////tip velocity///////////////
                 
                 if (x->fingerTipVelocityOnOff)    {
                     
-                    t_atom pointVel[7];
+                    t_atom pointVel[8];
                     
                     atom_setsym(pointVel,       x->s_tipVelocity);
                     atom_setlong(pointVel+1,    pointID);
                     atom_setlong(pointVel+2,    handID);
                     atom_setlong(pointVel+3,    x->curFrameID);
-                    atom_setfloat(pointVel+4,   finger.tipVelocity().x);
-                    atom_setfloat(pointVel+5,   finger.tipVelocity().y);
-                    atom_setfloat(pointVel+6,   finger.tipVelocity().z);
+                    atom_setsym(pointVel+4,       x->fingerNames[finger.type()]);
+                    atom_setfloat(pointVel+5,   finger.tipVelocity().x);
+                    atom_setfloat(pointVel+6,   finger.tipVelocity().y);
+                    atom_setfloat(pointVel+7,   finger.tipVelocity().z);
                     
-                    outlet_anything(x->outletFingers, x->HAND, 7, pointVel);
+                    outlet_anything(x->outletFingers, x->HAND, 8, pointVel);
                 }
                 ///////////////tip dimension///////////
                 if (x->fingerDimensionOnOff)  {
                     
-                    t_atom pointDim[6];
+                    t_atom pointDim[7];
                     
                     atom_setsym(pointDim,       x->s_tipDimension);
                     atom_setlong(pointDim+1,    pointID);
                     atom_setlong(pointDim+2,    handID);
                     atom_setlong(pointDim+3,    x->curFrameID);
-                    atom_setfloat(pointDim+4,   finger.width());
-                    atom_setfloat(pointDim+5,   finger.length());
+                    atom_setsym(pointDim+4,     x->fingerNames[finger.type()]);
+                    atom_setfloat(pointDim+5,   finger.width());
+                    atom_setfloat(pointDim+6,   finger.length());
                     
-                    outlet_anything(x->outletFingers, x->HAND, 6, pointDim);
+                    outlet_anything(x->outletFingers, x->HAND, 7, pointDim);
                 }
                 if (x->fingerTouchZoneOnOff)  {
                     
-                    t_atom pointTouch[6];
+                    t_atom pointTouch[7];
                     
                     atom_setsym(pointTouch,         x->s_touchZone);
                     atom_setlong(pointTouch+1,      pointID);
                     atom_setlong(pointTouch+2,      handID);
                     atom_setlong(pointTouch+3,      x->curFrameID);
-                    atom_setfloat(pointTouch+4,     finger.touchDistance());
-                    atom_setlong(pointTouch+5,      finger.touchZone());
+                    atom_setsym(pointTouch+4,       x->fingerNames[finger.type()]);
+                    atom_setfloat(pointTouch+5,     finger.touchDistance());
+                    atom_setlong(pointTouch+6,      finger.touchZone());
                     
-                    outlet_anything(x->outletFingers, x->HAND, 6, pointTouch);
+                    outlet_anything(x->outletFingers, x->HAND, 7, pointTouch);
                 }
+                
+                if (x->fingerIsExtendedOnOff)   {
+                    
+                    t_atom extended[6];
+                    
+                    atom_setsym(extended,         x->s_extended);
+                    atom_setlong(extended+1,      pointID);
+                    atom_setlong(extended+2,      handID);
+                    atom_setlong(extended+3,      x->curFrameID);
+                    atom_setsym(extended+4,       x->fingerNames[finger.type()]);
+                    atom_setlong(extended+5,      finger.isExtended());
+                    
+                    
+                    outlet_anything(x->outletFingers, x->HAND, 6, extended);
+                }
+                
             }
         }
     }
