@@ -16,6 +16,7 @@
 /************************************/
 #include "ext.h"							// standard Max include, always required
 #include "ext_obex.h"						// required for new style Max object
+#include "ext_proto.h" 
 #include "Leap.h"
 #include <math.h>
 #include "LeapMath.h"
@@ -25,6 +26,7 @@
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
+
 
 /************************************/
 
@@ -217,7 +219,6 @@ typedef struct _MRleap
      message.
     */
     
-    
     t_symbol            *s_frameMain;
     t_symbol            *s_x;
     t_symbol            *s_y;
@@ -300,6 +301,11 @@ void MRleap_processSwipeData(t_MRleap *x,       Leap::Frame frame, Leap::Gesture
 void MRleap_getArmData(t_MRleap *x,             Leap::Frame frame);
 
 void MRleap_gestureResetAll(t_MRleap *x);
+void MRleap_circleGestureReset(t_MRleap *x);
+void MRleap_keyTapGestureReset(t_MRleap *x);
+void MRleap_screenTapGestureReset(t_MRleap *x);
+void MRleap_swipeGestureReset(t_MRleap *x);
+void MRleap_gestureResetGeneric(t_MRleap *x, t_symbol *gesture);
 /****************************************************/
 /****************************************************/
 //          JITTER STUFF
@@ -309,10 +315,18 @@ void MRleap_getImage    (t_MRleap *x,           Leap::Image image, t_symbol *mat
 void MRleap_getDistortion(t_MRleap *x,          Leap::Image image);
  /****************************************************/
  /****************************************************/
-
+////gesture attributes
 t_max_err MRleap_gestureCircleMinArc_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
-t_max_err MRleap_gestureCircleMinArc_get(t_MRleap *x, t_object *attr, long *argc, t_atom **argv);
-
+t_max_err MRleap_gestureCircleMinRadius_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureSwipeMinLength_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureSwipeMinVelocity_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureKeyTapMinDownVelocity_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureKeyTapMinDistance_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureKeyTapHistorySeconds_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureScreenTapMinForwardVelocity_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureScreenTapHistorySeconds_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+t_max_err MRleap_gestureScreenTapMinDistance_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
+//////////
 t_max_err MRleap_gestureCircleOnOff_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
 t_max_err MRleap_gestureKeyTapOnOff_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
 t_max_err MRleap_gestureScreenTapOnOff_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv);
@@ -337,6 +351,8 @@ int T_EXPORT main(void)
     class_addmethod(c, (method)MRleap_bang,                     "bang",                                 0);
     class_addmethod(c, (method)MRleap_assist,                   "assist",                    A_CANT,    0);
     class_addmethod(c, (method)MRleap_gestureResetAll,          "resetGestureAll",           A_NOTHING, 0);
+    class_addmethod(c, (method)MRleap_circleGestureReset,       "resetCircleAttributes",     A_NOTHING, 0);
+    class_addmethod(c, (method)MRleap_gestureResetGeneric,      "resetGesture",              A_SYM,     0);
     
     //////////////attribute
     /***************************Global***********************************/
@@ -671,20 +687,65 @@ int T_EXPORT main(void)
 	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapDirectionOnOff", 0, "onoff", "ScreenTapDirection");
 	CLASS_ATTR_SAVE(c,"gestureScreenTapDirectionOnOff", 0);
     /*****************************Gesture info****************************/
-    /*circleMinRadius;
-     float               circleMinArc;
-     float               swipeMinLength;
-     float               swipeMinVelocity;
-     float               keyTapMinDownVelocity;
-     float               keyTapHistorySeconds;
-     float               keyTapMinDistance;
-     float               screenTapMinForwardVelocity;
-     float               screenTapHistorySeconds;
-     float               screenTapMinDistance;
-     */
-    CLASS_ATTR_LONG(c, "circleMinArc", 0, t_MRleap, circleMinArc);
+    //////gesture attributes
+    CLASS_ATTR_FLOAT(c, "screenTapMinDistance", 0, t_MRleap, screenTapMinDistance);
+    CLASS_ATTR_LABEL(c, "screenTapMinDistance", 0, "ScreenTapMinDistance");
+    CLASS_ATTR_ACCESSORS(c, "screenTapMinDistance", NULL, MRleap_gestureScreenTapMinDistance_set);
+    CLASS_ATTR_FILTER_MIN(c, "screenTapMinDistance", 0);
+    CLASS_ATTR_SAVE(c,"screenTapMinDistance", 0);
+    
+    CLASS_ATTR_FLOAT(c, "screenTapHistorySeconds", 0, t_MRleap, screenTapHistorySeconds);
+    CLASS_ATTR_LABEL(c, "screenTapHistorySeconds", 0, "ScreenTapHistorySeconds");
+    CLASS_ATTR_ACCESSORS(c, "screenTapHistorySeconds", NULL, MRleap_gestureScreenTapHistorySeconds_set);
+    CLASS_ATTR_FILTER_MIN(c, "screenTapMinDistance", 0);
+    CLASS_ATTR_SAVE(c,"screenTapHistorySeconds", 0);
+    
+    CLASS_ATTR_FLOAT(c, "screenTapMinForwardVelocity", 0, t_MRleap, screenTapMinForwardVelocity);
+    CLASS_ATTR_LABEL(c, "screenTapMinForwardVelocity", 0, "ScreenTapMinForwardVelocity");
+    CLASS_ATTR_ACCESSORS(c, "screenTapMinForwardVelocity", NULL, MRleap_gestureScreenTapMinForwardVelocity_set);
+    CLASS_ATTR_FILTER_MIN(c, "screenTapHistorySeconds", 0);
+    CLASS_ATTR_SAVE(c,"screenTapMinForwardVelocity", 0);
+    
+    CLASS_ATTR_FLOAT(c, "keyTapMinDistance", 0, t_MRleap, keyTapMinDistance);
+    CLASS_ATTR_LABEL(c, "keyTapMinDistance", 0, "KeyTapMinDistance");
+    CLASS_ATTR_ACCESSORS(c, "keyTapMinDistance", NULL, MRleap_gestureKeyTapMinDistance_set);
+    CLASS_ATTR_FILTER_MIN(c, "keyTapMinDistance", 0);
+    CLASS_ATTR_SAVE(c,"keyTapMinDistance", 0);
+    
+    CLASS_ATTR_FLOAT(c, "keyTapHistorySeconds", 0, t_MRleap, keyTapHistorySeconds);
+    CLASS_ATTR_LABEL(c, "keyTapHistorySeconds", 0, "KeyTapHistorySeconds");
+    CLASS_ATTR_ACCESSORS(c, "keyTapHistorySeconds", NULL, MRleap_gestureKeyTapHistorySeconds_set);
+    CLASS_ATTR_FILTER_MIN(c, "keyTapHistorySeconds", 0);
+    CLASS_ATTR_SAVE(c,"keyTapHistorySeconds", 0);
+    
+    CLASS_ATTR_FLOAT(c, "keyTapMinDownVelocity", 0, t_MRleap, keyTapMinDownVelocity);
+    CLASS_ATTR_LABEL(c, "keyTapMinDownVelocity", 0, "KeyTapMinDownVelocity");
+    CLASS_ATTR_ACCESSORS(c, "keyTapMinDownVelocity", NULL, MRleap_gestureKeyTapMinDownVelocity_set);
+    CLASS_ATTR_FILTER_MIN(c, "keyTapMinDownVelocity", 0);
+    CLASS_ATTR_SAVE(c,"keyTapMinDownVelocity", 0);
+    
+    CLASS_ATTR_FLOAT(c, "swipeMinVelocity", 0, t_MRleap, swipeMinVelocity);
+    CLASS_ATTR_LABEL(c, "swipeMinVelocity", 0, "SwipeMinVelocity");
+    CLASS_ATTR_ACCESSORS(c, "swipeMinVelocity", NULL, MRleap_gestureSwipeMinVelocity_set);
+    CLASS_ATTR_FILTER_MIN(c, "swipeMinVelocity", 0);
+    CLASS_ATTR_SAVE(c,"swipeMinVelocity", 0);
+    
+    CLASS_ATTR_FLOAT(c, "swipeMinLength", 0, t_MRleap, swipeMinLength);
+    CLASS_ATTR_LABEL(c, "swipeMinLength", 0, "SwipeMinLength");
+    CLASS_ATTR_ACCESSORS(c, "swipeMinLength", NULL, MRleap_gestureSwipeMinLength_set);
+    CLASS_ATTR_FILTER_MIN(c, "swipeMinLength", 0);
+    CLASS_ATTR_SAVE(c,"swipeMinLength", 0);
+    
+    CLASS_ATTR_FLOAT(c, "circleMinRadius", 0, t_MRleap, circleMinRadius);
+    CLASS_ATTR_LABEL(c, "circleMinRadius", 0, "CircleMinRadius");
+    CLASS_ATTR_ACCESSORS(c, "circleMinRadius", NULL, MRleap_gestureCircleMinRadius_set);
+    CLASS_ATTR_FILTER_MIN(c, "circleMinRadius", 0);
+    CLASS_ATTR_SAVE(c,"circleMinRadius", 0);
+    
+    CLASS_ATTR_FLOAT(c, "circleMinArc", 0, t_MRleap, circleMinArc);
 	CLASS_ATTR_LABEL(c, "circleMinArc", 0, "CircleMinArc");
-    CLASS_ATTR_ACCESSORS(c, "circleMinArc", MRleap_gestureCircleMinArc_get, MRleap_gestureCircleMinArc_set);
+    CLASS_ATTR_ACCESSORS(c, "circleMinArc", NULL, MRleap_gestureCircleMinArc_set);
+    CLASS_ATTR_FILTER_MIN(c, "circleMinArc", 0);
 	CLASS_ATTR_SAVE(c,"circleMinArc", 0);
     /*********************************************************************/
     //order of attributes
@@ -782,6 +843,18 @@ int T_EXPORT main(void)
     CLASS_ATTR_ORDER(c, "gestureScreenTapPositionOnOff",        0, "75");
     CLASS_ATTR_ORDER(c, "gestureScreenTapPositionNormOnOff",    0, "76");
     CLASS_ATTR_ORDER(c, "gestureScreenTapDirectionOnOff",       0, "77");
+    //////gesture attributes
+
+    CLASS_ATTR_ORDER(c, "circleMinRadius",                      0, "78");
+    CLASS_ATTR_ORDER(c, "circleMinArc",                         0, "79");
+    CLASS_ATTR_ORDER(c, "swipeMinLength",                       0, "80");
+    CLASS_ATTR_ORDER(c, "swipeMinVelocity",                     0, "81");
+    CLASS_ATTR_ORDER(c, "keyTapMinDownVelocity",                0, "82");
+    CLASS_ATTR_ORDER(c, "keyTapHistorySeconds",                 0, "83");
+    CLASS_ATTR_ORDER(c, "keyTapMinDistance",                    0, "84");
+    CLASS_ATTR_ORDER(c, "screenTapMinForwardVelocity",          0, "85");
+    CLASS_ATTR_ORDER(c, "screenTapHistorySeconds",              0, "86");
+    CLASS_ATTR_ORDER(c, "screenTapMinDistance",                 0, "87");
     /*********************************************************************/
     
 	class_register(CLASS_BOX, c);
@@ -893,20 +966,6 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->gestureScreenTapDirectionOnOff   = false;
 
     
-    
-    ////////gesture attr default
-    //////////gesture attr
-    x->circleMinRadius                  = 5.;
-    x->circleMinArc                     = 1.5 * Leap::PI;
-    x->swipeMinLength                   = 150;
-    x->swipeMinVelocity                 = 1000;
-    x->keyTapMinDownVelocity            = 50;
-    x->keyTapHistorySeconds             = 0.1;
-    x->keyTapMinDistance                = 3;
-    x->screenTapMinForwardVelocity      = 50;
-    x->screenTapHistorySeconds          = 0.1;
-    x->screenTapMinDistance             = 5;
-    
     /////////outlets
     x->matrix_nameLeft  = gensym("leapCameraLeft");
     x->matrix_nameRight = gensym("leapCameraRight");
@@ -982,7 +1041,6 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->fingerNames[3]           = gensym("Ring");
     x->fingerNames[4]           = gensym("Pinky");
     
-
     x->RIGHT = gensym("rightmost");
     x->LEFT  = gensym("leftmost");
     x->HAND  = x->LEFT;
@@ -996,6 +1054,11 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->m_clock = clock_new((t_MRleap *) x, (method)MRleap_checkLeapConnection);
     
     clock_fdelay(x->m_clock, 1000);
+    
+    ////////gesture attr default
+    //////////gesture attr
+    
+    MRleap_gestureResetAll(x);
     
 	return (x);
 }
@@ -2202,6 +2265,63 @@ void MRleap_processCircleData(t_MRleap *x, Leap::Frame frame, Leap::Gesture gest
     }
 }
 /************************************/
+/************************************/
+void MRleap_circleGestureReset(t_MRleap *x)
+{
+    x->circleMinRadius              = circleMinRadiusDef;
+    x->circleMinArc                 = circleMinArcDef;
+    
+    x->leap->config().setFloat("Gesture.Circle.MinRadius",              x->circleMinRadius);
+    x->leap->config().setFloat("Gesture.Circle.MinArc",                 x->circleMinArc);
+    x->leap->config().save();
+    
+    post("CircleGesture has been reset to the default values of:");
+    post("radius %f and arc %f", x->circleMinRadius, x->circleMinArc);
+}
+/************************************/
+void MRleap_keyTapGestureReset(t_MRleap *x)
+{
+    x->keyTapMinDownVelocity        = keyTapMinDownVelocityDef;
+    x->keyTapHistorySeconds         = keyTapHistorySecondsDef;
+    x->keyTapMinDistance            = keyTapMinDistanceDef;
+    
+    x->leap->config().setFloat("Gesture.KeyTap.MinDownVelocity",        x->keyTapMinDownVelocity);
+    x->leap->config().setFloat("Gesture.KeyTap.HistorySeconds",         x->keyTapHistorySeconds);
+    x->leap->config().setFloat("Gesture.KeyTap.MinDistance",            x->keyTapMinDistance);
+    x->leap->config().save();
+    
+    post("KeyTapGesture has been reset to the default values of:");
+    post("velocity %f seconds %f and distance %f", x->keyTapMinDownVelocity, x->keyTapHistorySeconds, x->keyTapMinDistance);
+}
+/************************************/
+void MRleap_screenTapGestureReset(t_MRleap *x)
+{
+    x->screenTapMinForwardVelocity  = screenTapMinForwardVelocityDef;
+    x->screenTapHistorySeconds      = screenTapHistorySecondsDef;
+    x->screenTapMinDistance         = screenTapMinDistanceDef;
+    
+    x->leap->config().setFloat("Gesture.ScreenTap.MinForwardVelocity",  x->screenTapMinForwardVelocity);
+    x->leap->config().setFloat("Gesture.ScreenTap.HistorySeconds",      x->screenTapHistorySeconds);
+    x->leap->config().setFloat("Gesture.ScreenTap.MinDistance",         x->screenTapMinDistance);
+    x->leap->config().save();
+    
+    post("ScreenTapGesture has been reset to the default values of:");
+    post("velocity %f seconds %f and distance %f", x->screenTapMinForwardVelocity, x->screenTapHistorySeconds, x->screenTapMinDistance);
+}
+/************************************/
+void MRleap_swipeGestureReset(t_MRleap *x)
+{
+    x->swipeMinLength               = swipeMinLengthDef;
+    x->swipeMinVelocity             = swipeMinVelocityDef;
+    
+    x->leap->config().setFloat("Gesture.Swipe.MinLength",               x->swipeMinLength);
+    x->leap->config().setFloat("Gesture.Swipe.MinVelocity",             x->swipeMinVelocity);
+    x->leap->config().save();
+    
+    post("SwipeGesture has been reset to the default values of:");
+    post("length %f and velocity %f", x->swipeMinLength, x->swipeMinVelocity);
+}
+/************************************/
 void MRleap_processKeyTapData(t_MRleap *x, Leap::Frame frame, Leap::Gesture gesture)
 {
     Leap::KeyTapGesture tap = Leap::KeyTapGesture(gesture);
@@ -2451,6 +2571,21 @@ Leap::Vector MRleap_normalizeVec(t_MRleap *x, Leap::Frame frame, Leap::Vector ve
 /************************************/
 void MRleap_gestureResetAll(t_MRleap *x)
 {
+    /*
+    
+    
+    
+    
+    WHEN USING ANY OF THE RESET METHODS RIGHT NOW, THE NEW VALUE IS NOT STORED!!!
+     NEED TO CALL THE SETTER METHODS SOMEHOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
+    
+    
+    
+    */
+    
+    
+    
     x->circleMinRadius              = circleMinRadiusDef;
     x->circleMinArc                 = circleMinArcDef;
     x->swipeMinLength               = swipeMinLengthDef;
@@ -2461,6 +2596,90 @@ void MRleap_gestureResetAll(t_MRleap *x)
     x->screenTapMinForwardVelocity  = screenTapMinForwardVelocityDef;
     x->screenTapHistorySeconds      = screenTapHistorySecondsDef;
     x->screenTapMinDistance         = screenTapMinDistanceDef;
+    
+    x->leap->config().setFloat("Gesture.Circle.MinRadius",              x->circleMinRadius);
+    x->leap->config().setFloat("Gesture.Circle.MinArc",                 x->circleMinArc);
+    x->leap->config().setFloat("Gesture.Swipe.MinLength",               x->swipeMinLength);
+    x->leap->config().setFloat("Gesture.Swipe.MinVelocity",             x->swipeMinVelocity);
+    x->leap->config().setFloat("Gesture.KeyTap.MinDownVelocity",        x->keyTapMinDownVelocity);
+    x->leap->config().setFloat("Gesture.KeyTap.HistorySeconds",         x->keyTapHistorySeconds);
+    x->leap->config().setFloat("Gesture.KeyTap.MinDistance",            x->keyTapMinDistance);
+    x->leap->config().setFloat("Gesture.ScreenTap.MinForwardVelocity",  x->screenTapMinForwardVelocity);
+    x->leap->config().setFloat("Gesture.ScreenTap.HistorySeconds",      x->screenTapHistorySeconds);
+    x->leap->config().setFloat("Gesture.ScreenTap.MinDistance",         x->screenTapMinDistance);
+    x->leap->config().save();
+    
+    post("All gesture attributes have been reset to their original values...");
+}
+/************************************/
+void MRleap_gestureResetGeneric(t_MRleap *x, t_symbol *gesture)
+{
+    if (gesture == gensym("circleMinRadius"))   {
+        x->circleMinRadius              = circleMinRadiusDef;
+        x->leap->config().setFloat("Gesture.Circle.MinRadius",              x->circleMinRadius);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->circleMinRadius);
+    }
+    else if (gesture == gensym("circleMinArc"))  {
+        x->circleMinArc                 = circleMinArcDef;
+        x->leap->config().setFloat("Gesture.Circle.MinArc",                 x->circleMinArc);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->circleMinArc);
+    }
+    else if (gesture == gensym("swipeMinLength"))  {
+        x->swipeMinLength               = swipeMinLengthDef;
+        x->leap->config().setFloat("Gesture.Swipe.MinLength",               x->swipeMinLength);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->swipeMinLength);
+    }
+    else if (gesture == gensym("swipeMinVelocity"))  {
+        x->swipeMinVelocity             = swipeMinVelocityDef;
+        x->leap->config().setFloat("Gesture.Swipe.MinVelocity",             x->swipeMinVelocity);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->swipeMinVelocity);
+    }
+    else if (gesture == gensym("keyTapMinDownVelocity"))  {
+        x->keyTapMinDownVelocity        = keyTapMinDownVelocityDef;
+        x->leap->config().setFloat("Gesture.KeyTap.MinDownVelocity",        x->keyTapMinDownVelocity);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->keyTapMinDownVelocity);
+    }
+    else if (gesture == gensym("keyTapHistorySeconds"))  {
+        x->keyTapHistorySeconds         = keyTapHistorySecondsDef;
+        x->leap->config().setFloat("Gesture.KeyTap.HistorySeconds",         x->keyTapHistorySeconds);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->keyTapHistorySeconds);
+    }
+    else if (gesture == gensym("keyTapMinDistance"))  {
+        x->keyTapMinDistance            = keyTapMinDistanceDef;
+        x->leap->config().setFloat("Gesture.KeyTap.MinDistance",            x->keyTapMinDistance);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->keyTapMinDistance);
+    }
+    else if (gesture == gensym("screenTapMinForwardVelocity"))  {
+        x->screenTapMinForwardVelocity  = screenTapMinForwardVelocityDef;
+        x->leap->config().setFloat("Gesture.ScreenTap.MinForwardVelocity",  x->screenTapMinForwardVelocity);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->screenTapMinForwardVelocity);
+    }
+    else if (gesture == gensym("screenTapHistorySeconds"))  {
+        x->screenTapHistorySeconds      = screenTapHistorySecondsDef;
+        x->leap->config().setFloat("Gesture.ScreenTap.HistorySeconds",      x->screenTapHistorySeconds);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->screenTapHistorySeconds);
+    }
+    else if (gesture == gensym("screenTapMinDistance"))  {
+        x->screenTapMinDistance         = screenTapMinDistanceDef;
+        x->leap->config().setFloat("Gesture.ScreenTap.MinDistance",         x->screenTapMinDistance);
+        
+        post("%s has been reset to the default value of: %f", gesture->s_name, x->screenTapMinDistance);
+    }
+    else {
+        
+        object_error((t_object *) x, "ERROR: The symbol %s\n is not supported", gesture->s_name);
+    }
+    
+     x->leap->config().save();
 }
 /************************************/
 t_max_err MRleap_gestureCircleMinArc_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
@@ -2469,27 +2688,148 @@ t_max_err MRleap_gestureCircleMinArc_set(t_MRleap *x, t_object *attr, long argc,
         
         x->circleMinArc = atom_getfloat(argv) * MRleap_RadDeg(x);
         
+        x->leap->config().setFloat("Gesture.Circle.MinArc", x->circleMinArc);
+        x->leap->config().save();
+        
         return MAX_ERR_NONE;
     }
     
     return MAX_ERR_GENERIC;
 }
 /************************************/
-t_max_err MRleap_gestureCircleMinArc_get(t_MRleap *x, t_object *attr, long *argc, t_atom **argv)
+t_max_err MRleap_gestureCircleMinRadius_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
 {
-    char alloc;
-    float size = 0;
-    
-    atom_alloc(argc, argv, &alloc);     // allocate return atom
-
-    
-    if (x->circleMinArc)
-        size = atom_getfloat(*argv) * MRleap_RadDeg(x);
+    if (argc && argv)   {
         
-        atom_setlong(*argv, size);
-    
-    
-    return MAX_ERR_NONE;
+        x->circleMinRadius = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.Circle.MinRadius", x->circleMinRadius);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureSwipeMinLength_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->swipeMinLength = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.Swipe.MinLength", x->swipeMinLength);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureSwipeMinVelocity_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->swipeMinVelocity = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.Swipe.MinVelocity", x->swipeMinVelocity);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureKeyTapMinDownVelocity_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->keyTapMinDownVelocity = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.KeyTap.MinDownVelocity", x->keyTapMinDownVelocity);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureKeyTapMinDistance_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->keyTapMinDistance = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.KeyTap.MinDistance", x->keyTapMinDistance);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureKeyTapHistorySeconds_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->keyTapHistorySeconds = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.KeyTap.HistorySeconds", x->keyTapHistorySeconds);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureScreenTapMinForwardVelocity_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->screenTapMinForwardVelocity = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.ScreenTap.MinForwardVelocity", x->screenTapMinForwardVelocity);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureScreenTapHistorySeconds_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->screenTapHistorySeconds = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.ScreenTap.HistorySeconds", x->screenTapHistorySeconds);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
+}
+/************************************/
+t_max_err MRleap_gestureScreenTapMinDistance_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
+{
+    if (argc && argv)   {
+        
+        x->screenTapMinDistance = atom_getfloat(argv);
+        
+        x->leap->config().setFloat("Gesture.ScreenTap.MinDistance", x->screenTapMinDistance);
+        x->leap->config().save();
+        
+        return MAX_ERR_NONE;
+    }
+
+    return MAX_ERR_GENERIC;
 }
 /************************************/
 t_max_err MRleap_gestureCircleOnOff_set(t_MRleap *x, t_object *attr, long argc, t_atom *argv)
@@ -2563,71 +2903,5 @@ void MRleap_assignHandID(t_MRleap *x, Leap::Hand hand)
         
         x->HAND = x->OTHER;
     }
-    
-    
-    /*x->leftmostID and x->rightmostID are calculated at the end of each getFrameData() function
-     */
-/*    long handID = hand.id();
-    
-    if (handID == x->rightmostID)   {
-        
-        x->HAND = x->RIGHT;
-    }
-    else if (handID == x->leftmostID)   {
-        
-         x->HAND = x->LEFT;
-    }
-    else if (x->rightmostID >= 0 && x->leftmostID >= 0 && handID != x->rightmostID && handID != x->leftmostID)   {
-        
-        x->HAND = x->OTHER;
-    }
-    else    {
-       
-        
-        
-        
-        post("which hand??");
-        
-        
-        
-        
-        //might need to be smarter about this:
-        // -1 is assigned to the hand that is removed -> we don't want it to show up as a x->OTHER!!!
-        
-
-        
-        
-//        x->HAND = x->OTHER;
-    }
-    
-    x->prevLeftmostID  = x->leftmostID;
-    x->prevRightmostID = x->rightmostID;
- */
 }
-/************************************/
-/************************************
- Transforming Finger Coordinates into the Hand's Frame of Reference
- 
- Sometimes it is useful to obtain the coordinates of the fingers of a hand with respect to the hand's frame of reference. This lets you sort the fingers spatially and can simplify analysis of finger positions. You can create a transform matrix using the Leap Matrix class to transform the finger position and direction coordinates. The hand frame of reference can be usefully defined with the hand's direction and palm normal vectors, with the third axis defined by the cross product between the two. This puts the x-axis sideways across the hand, the z-axis pointing forward, and the y-axis parallel with the palm normal.
- Leap::Frame frame = leap.frame();
- for( int h = 0; h < frame.hands().count(); h++ )
- {
- Leap::Hand leapHand = frame.hands()[h];
- 
- Leap::Vector handXBasis =  leapHand.palmNormal().cross(leapHand.direction()).normalized();
- Leap::Vector handYBasis = -leapHand.palmNormal();
- Leap::Vector handZBasis = -leapHand.direction();
- Leap::Vector handOrigin =  leapHand.palmPosition();
- Leap::Matrix handTransform = Leap::Matrix(handXBasis, handYBasis, handZBasis, handOrigin);
- handTransform = handTransform.rigidInverse();
- 
- for( int f = 0; f < leapHand.fingers().count(); f++ )
- {
- Leap::Finger leapFinger = leapHand.fingers()[f];
- Leap::Vector transformedPosition = handTransform.transformPoint(leapFinger.tipPosition());
- Leap::Vector transformedDirection = handTransform.transformDirection(leapFinger.direction());
- // Do something with the transformed fingers
- }
- }
-*/
 /************************************/

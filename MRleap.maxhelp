@@ -2657,7 +2657,7 @@
 							"architecture" : "x86"
 						}
 ,
-						"rect" : [ 940.0, 44.0, 843.0, 859.0 ],
+						"rect" : [ 326.0, 142.0, 843.0, 859.0 ],
 						"bglocked" : 0,
 						"openinpresentation" : 0,
 						"default_fontsize" : 12.0,
@@ -2676,7 +2676,36 @@
 						"description" : "",
 						"digest" : "",
 						"tags" : "",
+						"visible" : 1,
 						"boxes" : [ 							{
+								"box" : 								{
+									"fontname" : "Arial",
+									"fontsize" : 12.0,
+									"id" : "obj-7",
+									"maxclass" : "message",
+									"numinlets" : 2,
+									"numoutlets" : 1,
+									"outlettype" : [ "" ],
+									"patching_rect" : [ 65.0, 226.0, 123.0, 18.0 ],
+									"text" : "circleMinRadius"
+								}
+
+							}
+, 							{
+								"box" : 								{
+									"fontname" : "Arial",
+									"fontsize" : 12.0,
+									"id" : "obj-3",
+									"maxclass" : "message",
+									"numinlets" : 2,
+									"numoutlets" : 1,
+									"outlettype" : [ "" ],
+									"patching_rect" : [ 65.0, 262.0, 130.0, 18.0 ],
+									"text" : "resetGesture $1"
+								}
+
+							}
+, 							{
 								"box" : 								{
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -2728,7 +2757,7 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 221.450012, 49.0, 286.0, 141.0 ],
-									"text" : "circleMinRadiusDef                         = 5.;\ncircleMinArcDef                               = 1.5 * Leap::PI;\nswipeMinLengthDef                         = 150;\nswipeMinVelocityDef                        = 1000;\nkeyTapMinDownVelocityDef             = 50;\nkeyTapHistorySecondsDef               = 0.1;\nkeyTapMinDistanceDef                     = 3;\nscreenTapMinForwardVelocityDef    = 50;\nscreenTapHistorySecondsDef          = 0.1;\nscreenTapMinDistanceDef                = 5;"
+									"text" : "circleMinRadiusDef                          = 5.;\ncircleMinArcDef                                = 1.5 * PI;\nswipeMinLengthDef                          = 150;\nswipeMinVelocityDef                        = 1000;\nkeyTapMinDownVelocityDef             = 50;\nkeyTapHistorySecondsDef               = 0.1;\nkeyTapMinDistanceDef                     = 3;\nscreenTapMinForwardVelocityDef    = 50;\nscreenTapHistorySecondsDef          = 0.1;\nscreenTapMinDistanceDef                = 5;"
 								}
 
 							}
@@ -6389,7 +6418,7 @@
 											"architecture" : "x86"
 										}
 ,
-										"rect" : [ 25.0, 69.0, 1290.0, 577.0 ],
+										"rect" : [ 188.0, 44.0, 1119.0, 577.0 ],
 										"bglocked" : 0,
 										"openinpresentation" : 0,
 										"default_fontsize" : 12.0,
@@ -6408,7 +6437,50 @@
 										"description" : "",
 										"digest" : "",
 										"tags" : "",
+										"visible" : 1,
 										"boxes" : [ 											{
+												"box" : 												{
+													"fontname" : "Arial",
+													"fontsize" : 12.0,
+													"id" : "obj-10",
+													"maxclass" : "message",
+													"numinlets" : 2,
+													"numoutlets" : 1,
+													"outlettype" : [ "" ],
+													"patching_rect" : [ 125.0, 437.0, 156.0, 18.0 ],
+													"text" : "resetCircleAttributes"
+												}
+
+											}
+, 											{
+												"box" : 												{
+													"fontname" : "Arial",
+													"fontsize" : 12.0,
+													"id" : "obj-12",
+													"maxclass" : "flonum",
+													"numinlets" : 1,
+													"numoutlets" : 2,
+													"outlettype" : [ "float", "bang" ],
+													"parameter_enable" : 0,
+													"patching_rect" : [ 107.0, 468.0, 50.0, 20.0 ]
+												}
+
+											}
+, 											{
+												"box" : 												{
+													"fontname" : "Arial",
+													"fontsize" : 12.0,
+													"id" : "obj-4",
+													"maxclass" : "message",
+													"numinlets" : 2,
+													"numoutlets" : 1,
+													"outlettype" : [ "" ],
+													"patching_rect" : [ 109.0, 503.0, 93.0, 18.0 ],
+													"text" : "circleMinArc $1"
+												}
+
+											}
+, 											{
 												"box" : 												{
 													"fontname" : "Arial",
 													"fontsize" : 12.0,
@@ -7443,6 +7515,15 @@
  ],
 										"lines" : [ 											{
 												"patchline" : 												{
+													"destination" : [ "obj-99", 0 ],
+													"disabled" : 0,
+													"hidden" : 0,
+													"source" : [ "obj-10", 0 ]
+												}
+
+											}
+, 											{
+												"patchline" : 												{
 													"destination" : [ "obj-107", 3 ],
 													"disabled" : 0,
 													"hidden" : 0,
@@ -7465,6 +7546,15 @@
 													"disabled" : 0,
 													"hidden" : 0,
 													"source" : [ "obj-11", 0 ]
+												}
+
+											}
+, 											{
+												"patchline" : 												{
+													"destination" : [ "obj-4", 0 ],
+													"disabled" : 0,
+													"hidden" : 0,
+													"source" : [ "obj-12", 0 ]
 												}
 
 											}
@@ -7541,6 +7631,15 @@
 													"hidden" : 0,
 													"midpoints" : [ 83.5, 465.0, 59.5, 465.0 ],
 													"source" : [ "obj-28", 0 ]
+												}
+
+											}
+, 											{
+												"patchline" : 												{
+													"destination" : [ "obj-99", 0 ],
+													"disabled" : 0,
+													"hidden" : 0,
+													"source" : [ "obj-4", 0 ]
 												}
 
 											}
@@ -7734,6 +7833,15 @@
 							}
 , 							{
 								"patchline" : 								{
+									"destination" : [ "obj-1", 0 ],
+									"disabled" : 0,
+									"hidden" : 0,
+									"source" : [ "obj-3", 0 ]
+								}
+
+							}
+, 							{
+								"patchline" : 								{
 									"destination" : [ "obj-8", 0 ],
 									"disabled" : 0,
 									"hidden" : 0,
@@ -7779,6 +7887,15 @@
 									"hidden" : 0,
 									"midpoints" : [ 624.400024, 753.0, 815.724976, 753.0 ],
 									"source" : [ "obj-64", 0 ]
+								}
+
+							}
+, 							{
+								"patchline" : 								{
+									"destination" : [ "obj-3", 0 ],
+									"disabled" : 0,
+									"hidden" : 0,
+									"source" : [ "obj-7", 0 ]
 								}
 
 							}
@@ -7874,7 +7991,7 @@
  ]
 					}
 ,
-					"patching_rect" : [ 104.0, 325.0, 61.0, 20.0 ],
+					"patching_rect" : [ 105.0, 325.0, 61.0, 20.0 ],
 					"saved_object_attributes" : 					{
 						"default_fontface" : 0,
 						"default_fontname" : "Arial",
@@ -7928,8 +8045,33 @@
 						"description" : "",
 						"digest" : "",
 						"tags" : "",
-						"visible" : 1,
 						"boxes" : [ 							{
+								"box" : 								{
+									"id" : "obj-103",
+									"maxclass" : "toggle",
+									"numinlets" : 1,
+									"numoutlets" : 1,
+									"outlettype" : [ "int" ],
+									"parameter_enable" : 0,
+									"patching_rect" : [ 50.0, 661.0, 20.0, 20.0 ]
+								}
+
+							}
+, 							{
+								"box" : 								{
+									"fontname" : "Arial",
+									"fontsize" : 12.0,
+									"id" : "obj-101",
+									"maxclass" : "message",
+									"numinlets" : 2,
+									"numoutlets" : 1,
+									"outlettype" : [ "" ],
+									"patching_rect" : [ 50.0, 690.0, 149.0, 18.0 ],
+									"text" : "fingerIsExtendedOnOff $1"
+								}
+
+							}
+, 							{
 								"box" : 								{
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -8061,7 +8203,6 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 411.0, 526.0, 60.0, 20.0 ],
-									"presentation_rect" : [ 412.0, 526.0, 0.0, 0.0 ],
 									"text" : "name"
 								}
 
@@ -8076,7 +8217,6 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 411.0, 464.0, 60.0, 20.0 ],
-									"presentation_rect" : [ 411.0, 462.0, 0.0, 0.0 ],
 									"text" : "name"
 								}
 
@@ -8091,7 +8231,6 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 411.0, 401.0, 60.0, 20.0 ],
-									"presentation_rect" : [ 412.0, 398.0, 0.0, 0.0 ],
 									"text" : "name"
 								}
 
@@ -8106,7 +8245,6 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 411.0, 336.0, 60.0, 20.0 ],
-									"presentation_rect" : [ 413.0, 341.0, 0.0, 0.0 ],
 									"text" : "name"
 								}
 
@@ -8121,7 +8259,6 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 411.0, 256.0, 60.0, 20.0 ],
-									"presentation_rect" : [ 411.0, 253.0, 0.0, 0.0 ],
 									"text" : "name"
 								}
 
@@ -8136,7 +8273,6 @@
 									"numinlets" : 1,
 									"numoutlets" : 0,
 									"patching_rect" : [ 411.0, 177.0, 60.0, 20.0 ],
-									"presentation_rect" : [ 412.0, 177.0, 0.0, 0.0 ],
 									"text" : "name"
 								}
 
@@ -8721,8 +8857,7 @@
 													"numinlets" : 0,
 													"numoutlets" : 1,
 													"outlettype" : [ "" ],
-													"patching_rect" : [ 602.999939, 40.0, 25.0, 25.0 ],
-													"presentation_rect" : [ 616.999939, 36.0, 0.0, 0.0 ]
+													"patching_rect" : [ 602.999939, 40.0, 25.0, 25.0 ]
 												}
 
 											}
@@ -10396,6 +10531,24 @@
 							}
  ],
 						"lines" : [ 							{
+								"patchline" : 								{
+									"destination" : [ "obj-1", 0 ],
+									"disabled" : 0,
+									"hidden" : 1,
+									"source" : [ "obj-101", 0 ]
+								}
+
+							}
+, 							{
+								"patchline" : 								{
+									"destination" : [ "obj-101", 0 ],
+									"disabled" : 0,
+									"hidden" : 0,
+									"source" : [ "obj-103", 0 ]
+								}
+
+							}
+, 							{
 								"patchline" : 								{
 									"destination" : [ "obj-20", 0 ],
 									"disabled" : 0,
@@ -21063,7 +21216,8 @@
 						"armElbowPositionOnOff" : 0,
 						"armWidthOnOff" : 0,
 						"armWristPositionOnOff" : 0,
-						"circleMinArc" : 0,
+						"circleMinArc" : 0.0,
+						"circleMinRadius" : 5.0,
 						"fingerDimensionOnOff" : 0,
 						"fingerDirectionOnOff" : 0,
 						"fingerIsExtendedOnOff" : 0,
@@ -21127,8 +21281,16 @@
 						"handTranslationRawOnOff" : 0,
 						"imageDistortionOnOff" : 0,
 						"imageOnOff" : 0,
+						"keyTapHistorySeconds" : 0.1,
+						"keyTapMinDistance" : 3.0,
+						"keyTapMinDownVelocity" : 50.0,
 						"leftmostOnOff" : 1,
 						"rightmostOnOff" : 1,
+						"screenTapHistorySeconds" : 0.1,
+						"screenTapMinDistance" : 5.0,
+						"screenTapMinForwardVelocity" : 50.0,
+						"swipeMinLength" : 150.0,
+						"swipeMinVelocity" : 1000.0,
 						"toolDimensionOnOff" : 0,
 						"toolDirectionOnOff" : 0,
 						"toolMainOnOff" : 0,
@@ -21314,7 +21476,7 @@
 					"destination" : [ "obj-7", 1 ],
 					"disabled" : 0,
 					"hidden" : 0,
-					"midpoints" : [ 602.0, 298.0, 155.5, 298.0 ],
+					"midpoints" : [ 602.0, 298.0, 156.5, 298.0 ],
 					"source" : [ "obj-14", 1 ]
 				}
 
