@@ -1,17 +1,3 @@
-/**
- t_max_err myobjet_setattr_myattr(t_myobject *x, void *attr, long ac, t_atom *av)
- {
- if (ac && av) {
- if (atom_gettype(av) == A_LONG || atom_gettype(av) == A_FLOAT) {
- x->myattr = *av;
- else
- atom_setsym(&x->myattr, gensym(""));
- } else
- atom_setsym(&x->myattr, gensym(""));
- 
- return MAX_ERR_NONE;
- }
- */
 
 /************************************/
 #include "ext.h"							// standard Max include, always required
@@ -26,10 +12,7 @@
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
-
-
 /************************************/
-
 // a wrapper for cpost() only called for debug builds on Windows
 // to see these console posts, run the DbgView program (part of the SysInternals package distributed by Microsoft)
 #if defined( NDEBUG ) || defined( MAC_VERSION )
@@ -48,20 +31,6 @@
 #endif
 
 /************************************/
-const float circleMinRadiusDef              = 5.;
-const float circleMinArcDef                 = 1.5 * Leap::PI;
-const float swipeMinLengthDef               = 150;
-const float swipeMinVelocityDef             = 1000;
-const float keyTapMinDownVelocityDef        = 50;
-const float keyTapHistorySecondsDef         = 0.1;
-const float keyTapMinDistanceDef            = 3;
-const float screenTapMinForwardVelocityDef  = 50;
-const float screenTapHistorySecondsDef      = 0.1;
-const float screenTapMinDistanceDef         = 5;
-
-long imageBufferLength                      = 0;
-
-
 const std::string boneNames[] = {"Metacarpal", "Proximal", "Middle", "Distal"};
 const std::string stateNames[] = {"STATE_INVALID", "STATE_START", "STATE_UPDATE", "STATE_END"};
 /************************************/
@@ -93,17 +62,6 @@ typedef struct _MRleap
     float               frameTranslationProb;
     
     long                frameHist;
-    
-    long                leftmostOnOff;
-    long                leftmostID;
-    long                prevLeftmostID;
-    long                rightmostOnOff;
-    long                rightmostID;
-    long                prevRightmostID;
-    
-//    Leap::Matrix        mtxTotalMotionRotation;
-  //  Leap::Vector        vecTotalMotionTranslation;
-    //float               fTotalMotionScale;
     ///////////hand
     long                handMainOnOff;
     long                handSphereOnOff;
@@ -121,9 +79,7 @@ typedef struct _MRleap
     long                handRotationMatrix;
     long                handHorizontalPlaneOnOff;
     long                handPositionVelocityOnOff;
-    
     ///////////2.x stuff
-    
     long                handBasisOnOff;
     ////////////////
     
@@ -133,9 +89,12 @@ typedef struct _MRleap
     //////Arm
     long                armBasisOnOff;
     long                armCenterOnOff;
+    long                armCenterNormOnOff;
     long                armDirectionOnOff;
     long                armElbowPositionOnOff;
+    long                armElbowPositionNormOnOff;
     long                armWristPositionOnOff;
+    long                armWristPositionNormOnOff;
     long                armWidthOnOff;
     //////pointables
     long                toolMainOnOff;
@@ -201,6 +160,17 @@ typedef struct _MRleap
     long                gestureSwipePositionNormOnOff;
     long                gestureSwipeDirectionOnOff;
     //------------------
+    ////default gesture values
+    float circleMinRadiusDef;
+    float circleMinArcDef;
+    float swipeMinLengthDef;
+    float swipeMinVelocityDef;
+    float keyTapMinDownVelocityDef;
+    float keyTapHistorySecondsDef;
+    float keyTapMinDistanceDef;
+    float screenTapMinForwardVelocityDef;
+    float screenTapHistorySecondsDef;
+    float screenTapMinDistanceDef;
     
     ///////////
     //////Leap
@@ -271,7 +241,7 @@ typedef struct _MRleap
     long				plane;
     long				offsetcount;
     long 				offset[JIT_MATRIX_MAX_DIMCOUNT];
-    
+    long                imageBufferLength;
     long                prevDim[2];
     t_symbol            *prevMatrix;
     /****************************************************/
@@ -347,13 +317,17 @@ int T_EXPORT main(void)
 
 	t_class *c;
     
-	c = class_new("MRleap", (method)MRleap_new, (method)MRleap_free, sizeof(t_MRleap), NULL, A_GIMME,   0);
-    class_addmethod(c, (method)MRleap_bang,                     "bang",                                 0);
-    class_addmethod(c, (method)MRleap_assist,                   "assist",                    A_CANT,    0);
-    class_addmethod(c, (method)MRleap_gestureResetAll,          "resetGestureAll",           A_NOTHING, 0);
-    class_addmethod(c, (method)MRleap_circleGestureReset,       "resetCircleAttributes",     A_NOTHING, 0);
-    class_addmethod(c, (method)MRleap_gestureResetGeneric,      "resetGesture",              A_SYM,     0);
+	c = class_new("MRleap", (method)MRleap_new, (method)MRleap_free, sizeof(t_MRleap), NULL,         A_GIMME,   0);
+    class_addmethod(c,      (method)MRleap_bang,                     "bang",                                    0);
+    class_addmethod(c,      (method)MRleap_assist,                   "assist",                       A_CANT,    0);
+    class_addmethod(c,      (method)MRleap_gestureResetAll,          "resetGestureAll",              A_NOTHING, 0);
+    class_addmethod(c,      (method)MRleap_circleGestureReset,       "resetGestureCircle",           A_NOTHING, 0);
+    class_addmethod(c,      (method)MRleap_keyTapGestureReset,       "resetGestureKeyTap",           A_NOTHING, 0);
+    class_addmethod(c,      (method)MRleap_screenTapGestureReset,    "resetGestureScreenTap",        A_NOTHING, 0);
+    class_addmethod(c,      (method)MRleap_swipeGestureReset,        "resetGestureSwipe",            A_NOTHING, 0);
+    class_addmethod(c,      (method)MRleap_gestureResetGeneric,      "resetGesture",                 A_SYM,     0);
     
+//    post("%d", class_alias(c, gensym("MR.leap")));
     //////////////attribute
     /***************************Global***********************************/
     CLASS_ATTR_LONG(c, "frameHist", 0, t_MRleap, frameHist);
@@ -362,7 +336,7 @@ int T_EXPORT main(void)
 	CLASS_ATTR_SAVE(c,"frameHist", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "allDegOnOff", 0, t_MRleap, allDegOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "allDegOnOff", 0, "onoff", "Degrees");
+	CLASS_ATTR_STYLE_LABEL(c, "allDegOnOff", 0, "onoff", "DegreesOnOff");
 	CLASS_ATTR_SAVE(c,"allDegOnOff", 0);
     /************************** IMAGE ********************************/
     CLASS_ATTR_LONG(c, "imageOnOff", 0, t_MRleap, imageOnOff);
@@ -372,144 +346,146 @@ int T_EXPORT main(void)
     CLASS_ATTR_LONG(c, "imageDistortionOnOff", 0, t_MRleap, imageDistortionOnOff);
     CLASS_ATTR_STYLE_LABEL(c, "imageDistortionOnOff", 0, "onoff", "ImageDistortionOnOff");
     CLASS_ATTR_SAVE(c,"imageDistortionOnOff", 0);
+    
+/*    CLASS_ATTR_SYM(c, "matrix_nameLeft", 0, t_MRleap, matrix_nameLeft);
+    CLASS_ATTR_STYLE_LABEL(c, "matrix_nameLeft", 0, "text", "Matrix_nameLeft");
+    CLASS_ATTR_SAVE(c,"matrix_nameLeft", 0);
+
+    CLASS_ATTR_SYM(c, "matrix_nameRight", 0, t_MRleap, matrix_nameRight);
+    CLASS_ATTR_STYLE_LABEL(c, "matrix_nameRight", 0, "text", "Matrix_nameRight");
+    CLASS_ATTR_SAVE(c,"matrix_nameRight", 0);
+*/
     /************************** FRAME ********************************/
     CLASS_ATTR_LONG(c, "frameMainOnOff", 0, t_MRleap, frameMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameMainOnOff", 0, "onoff", "FrameMain");
+	CLASS_ATTR_STYLE_LABEL(c, "frameMainOnOff", 0, "onoff", "FrameMainOnOff");
 	CLASS_ATTR_SAVE(c,"frameMainOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "frameRotOnOff", 0, t_MRleap, frameRotOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameRotOnOff", 0, "onoff", "FrameRot");
+	CLASS_ATTR_STYLE_LABEL(c, "frameRotOnOff", 0, "onoff", "FrameRotOnOff");
 	CLASS_ATTR_SAVE(c,"frameRotOnOff", 0);
    
 	CLASS_ATTR_LONG(c, "frameRotRawOnOff", 0, t_MRleap, frameRotRawOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameRotRawOnOff", 0, "onoff", "FrameRotRaw");
+	CLASS_ATTR_STYLE_LABEL(c, "frameRotRawOnOff", 0, "onoff", "FrameRotRawOnOff");
 	CLASS_ATTR_SAVE(c,"frameRotRawOnOff", 0);
     
     CLASS_ATTR_FLOAT(c, "frameRotProb", 0, t_MRleap, frameRotProb);
-	CLASS_ATTR_LABEL(c, "frameRotProb", 0, "FrameRotProb");
+	CLASS_ATTR_LABEL(c, "frameRotProb", 0, "FrameRotProbOnOff");
     CLASS_ATTR_FILTER_CLIP(c, "frameRotProb", 0, 1);
 	CLASS_ATTR_SAVE(c,"frameRotProb", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "frameScaleOnOff", 0, t_MRleap, frameScaleOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameScaleOnOff", 0, "onoff", "FrameScale");
+	CLASS_ATTR_STYLE_LABEL(c, "frameScaleOnOff", 0, "onoff", "FrameScaleOnOff");
 	CLASS_ATTR_SAVE(c,"frameScaleOnOff", 0);
 
 	CLASS_ATTR_LONG(c, "frameScaleRawOnOff", 0, t_MRleap, frameScaleRawOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameScaleRawOnOff", 0, "onoff", "FrameScaleRaw");
+	CLASS_ATTR_STYLE_LABEL(c, "frameScaleRawOnOff", 0, "onoff", "FrameScaleRawOnOff");
 	CLASS_ATTR_SAVE(c,"frameScaleRawOnOff", 0);
 
     CLASS_ATTR_FLOAT(c, "frameScaleProb", 0, t_MRleap, frameScaleProb);
-	CLASS_ATTR_LABEL(c, "frameScaleProb", 0, "FrameScaleProb");
+	CLASS_ATTR_LABEL(c, "frameScaleProb", 0, "FrameScaleProbOnOff");
     CLASS_ATTR_FILTER_CLIP(c, "frameScaleProb", 0, 1);
 	CLASS_ATTR_SAVE(c,"frameScaleProb", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "frameTranslationOnOff", 0, t_MRleap, frameTranslationOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameTranslationOnOff", 0, "onoff", "FrameTrans");
+	CLASS_ATTR_STYLE_LABEL(c, "frameTranslationOnOff", 0, "onoff", "FrameTransOnOff");
 	CLASS_ATTR_SAVE(c,"frameTranslationOnOff", 0);
 
     CLASS_ATTR_LONG(c, "frameTranslationRawOnOff", 0, t_MRleap, frameTranslationRawOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameTranslationRawOnOff", 0, "onoff", "FrameTransRaw");
+	CLASS_ATTR_STYLE_LABEL(c, "frameTranslationRawOnOff", 0, "onoff", "FrameTransRawOnOff");
 	CLASS_ATTR_SAVE(c,"frameTranslationRawOnOff", 0);
      
     CLASS_ATTR_LONG(c, "frameTranslationNormOnOff", 0, t_MRleap, frameTranslationNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "frameTranslationNormOnOff", 0, "onoff", "FrameTransNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "frameTranslationNormOnOff", 0, "onoff", "FrameTransNormOnOff");
 	CLASS_ATTR_SAVE(c,"frameTranslationNormOnOff", 0);
     
     CLASS_ATTR_FLOAT(c, "frameTranslationProb", 0, t_MRleap, frameTranslationProb);
-	CLASS_ATTR_LABEL(c, "frameTranslationProb", 0, "FrameTransProb");
+	CLASS_ATTR_LABEL(c, "frameTranslationProb", 0, "FrameTransProbOnOff");
     CLASS_ATTR_FILTER_CLIP(c, "frameTranslationProb", 0, 1);
 	CLASS_ATTR_SAVE(c,"frameTranslationProb", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "frameRotationMatrixOnOff", 0, t_MRleap, frameRotationMatrix);
-	CLASS_ATTR_STYLE_LABEL(c, "frameRotationMatrixOnOff", 0, "onoff", "FrameRotMatrix");
+	CLASS_ATTR_STYLE_LABEL(c, "frameRotationMatrixOnOff", 0, "onoff", "FrameRotMatrixOnOff");
 	CLASS_ATTR_SAVE(c,"frameRotationMatrixOnOff", 0);
     //////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_LONG(c, "rightmostOnOff", 0, t_MRleap, rightmostOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "rightmostOnOff", 0, "onoff", "RightMost");
-	CLASS_ATTR_SAVE(c,"rightmostOnOff", 0);
-    //////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_LONG(c, "leftmostOnOff", 0, t_MRleap, leftmostOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "leftmostOnOff", 0, "onoff", "LeftMost");
-	CLASS_ATTR_SAVE(c,"leftmostOnOff", 0);
     /*********************************************************************/
     /************************** HAND *************************************/
     CLASS_ATTR_LONG(c, "handMainOnOff", 0, t_MRleap, handMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handMainOnOff", 0, "onoff", "HandMain");
+	CLASS_ATTR_STYLE_LABEL(c, "handMainOnOff", 0, "onoff", "HandMainOnOff");
 	CLASS_ATTR_SAVE(c,"handMainOnOff", 0);
     //////////////////////////////////////////////////////////////////////
 	CLASS_ATTR_LONG(c, "handSphereOnOff", 0, t_MRleap, handSphereOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handSphereOnOff", 0, "onoff", "HandSphere");
+	CLASS_ATTR_STYLE_LABEL(c, "handSphereOnOff", 0, "onoff", "HandSphereOnOff");
 	CLASS_ATTR_SAVE(c,"handSphereOnOff", 0);
 
     CLASS_ATTR_LONG(c, "handSphereNormOnOff", 0, t_MRleap, handSphereNorm);
-	CLASS_ATTR_STYLE_LABEL(c, "handSphereNormOnOff", 0, "onoff", "HandSphereNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "handSphereNormOnOff", 0, "onoff", "HandSphereNormOnOff");
 	CLASS_ATTR_SAVE(c,"handSphereNormOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "handPositionOnOff", 0, t_MRleap, handPositionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handPositionOnOff", 0, "onoff", "HandPosition");
+	CLASS_ATTR_STYLE_LABEL(c, "handPositionOnOff", 0, "onoff", "HandPositionOnOff");
 	CLASS_ATTR_SAVE(c,"handPositionOnOff", 0);
     
     CLASS_ATTR_LONG(c, "handPositionNormOnOff", 0, t_MRleap, handPositionNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handPositionNormOnOff", 0, "onoff", "HandPosNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "handPositionNormOnOff", 0, "onoff", "HandPosNormOnOff");
 	CLASS_ATTR_SAVE(c,"handPositionNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "handPositionVelocityOnOff", 0, t_MRleap, handPositionVelocityOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handPositionVelocityOnOff", 0, "onoff", "HandVelocity");
+	CLASS_ATTR_STYLE_LABEL(c, "handPositionVelocityOnOff", 0, "onoff", "HandVelocityOnOff");
 	CLASS_ATTR_SAVE(c,"handPositionVelocityOnOff", 0);
     
     CLASS_ATTR_LONG(c, "handPositionStabilizationOnOff", 0, t_MRleap, handPositionStabilizationOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handPositionStabilizationOnOff", 0, "onoff", "HandPosStable");
+	CLASS_ATTR_STYLE_LABEL(c, "handPositionStabilizationOnOff", 0, "onoff", "HandPosStableOnOff");
 	CLASS_ATTR_SAVE(c,"handPositionStabilizationOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "handRotationOnOff", 0, t_MRleap, handRotationOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handRotationOnOff", 0, "onoff", "HandRot");
+	CLASS_ATTR_STYLE_LABEL(c, "handRotationOnOff", 0, "onoff", "HandRotOnOff");
 	CLASS_ATTR_SAVE(c,"handRotationOnOff", 0);
 
 	CLASS_ATTR_LONG(c, "handRotationRawOnOff", 0, t_MRleap, handRotationRawOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handRotationRawOnOff", 0, "onoff", "HandRotRaw");
+	CLASS_ATTR_STYLE_LABEL(c, "handRotationRawOnOff", 0, "onoff", "HandRotRawOnOff");
 	CLASS_ATTR_SAVE(c,"handRotationRawOnOff", 0);
     
     CLASS_ATTR_FLOAT(c, "handRotationProb", 0, t_MRleap, handRotationProb);
-	CLASS_ATTR_LABEL(c, "handRotationProb", 0, "HandRotProb");
+	CLASS_ATTR_LABEL(c, "handRotationProb", 0, "HandRotProbOnOff");
     CLASS_ATTR_FILTER_CLIP(c, "handRotationProb", 0, 1);
 	CLASS_ATTR_SAVE(c,"handRotationProb", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "handScaleOnOff", 0, t_MRleap, handScaleOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handScaleOnOff", 0, "onoff", "HandScale");
+	CLASS_ATTR_STYLE_LABEL(c, "handScaleOnOff", 0, "onoff", "HandScaleOnOff");
 	CLASS_ATTR_SAVE(c,"handScaleOnOff", 0);
 
 	CLASS_ATTR_LONG(c, "handScaleRawOnOff", 0, t_MRleap, handScaleRawOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handScaleRawOnOff", 0, "onoff", "HandScaleRaw");
+	CLASS_ATTR_STYLE_LABEL(c, "handScaleRawOnOff", 0, "onoff", "HandScaleRawOnOff");
 	CLASS_ATTR_SAVE(c,"handScaleRawOnOff", 0);
 
     CLASS_ATTR_FLOAT(c, "handScaleProb", 0, t_MRleap, handScaleProb);
-	CLASS_ATTR_LABEL(c, "handScaleProb", 0, "HandScaleProb");
+	CLASS_ATTR_LABEL(c, "handScaleProb", 0, "HandScaleProbOnOff");
     CLASS_ATTR_FILTER_CLIP(c, "handScaleProb", 0, 1);
 	CLASS_ATTR_SAVE(c,"handScaleProb", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "handTranslationOnOff", 0, t_MRleap, handTranslationOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handTranslationOnOff", 0, "onoff", "HandTrans");
+	CLASS_ATTR_STYLE_LABEL(c, "handTranslationOnOff", 0, "onoff", "HandTransOnOff");
 	CLASS_ATTR_SAVE(c,"handTranslationOnOff", 0);
 
     CLASS_ATTR_LONG(c, "handTranslationRawOnOff", 0, t_MRleap, handTranslationRawOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handTranslationRawOnOff", 0, "onoff", "HandTransRaw");
+	CLASS_ATTR_STYLE_LABEL(c, "handTranslationRawOnOff", 0, "onoff", "HandTransRawOnOff");
 	CLASS_ATTR_SAVE(c,"handTranslationRawOnOff", 0);
 
     CLASS_ATTR_LONG(c, "handTranslationNormOnOff", 0, t_MRleap, handTranslationNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handTranslationNormOnOff", 0, "onoff", "HandTransNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "handTranslationNormOnOff", 0, "onoff", "HandTransNormOnOff");
 	CLASS_ATTR_SAVE(c,"handTranslationNormOnOff", 0);
 
     CLASS_ATTR_FLOAT(c, "handTranslationProb", 0, t_MRleap, handTranslationProb);
-	CLASS_ATTR_LABEL(c, "handTranslationProb", 0, "HandTransProb");
+	CLASS_ATTR_LABEL(c, "handTranslationProb", 0, "HandTransProbOnOff");
     CLASS_ATTR_FILTER_CLIP(c, "handTranslation  Prob", 0, 1);
 	CLASS_ATTR_SAVE(c,"handTranslationProb", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "handRotationMatrixOnOff", 0, t_MRleap, handRotationMatrix);
-	CLASS_ATTR_STYLE_LABEL(c, "handRotationMatrixOnOff", 0, "onoff", "HandRotMatrix");
+	CLASS_ATTR_STYLE_LABEL(c, "handRotationMatrixOnOff", 0, "onoff", "HandRotMatrixOnOff");
 	CLASS_ATTR_SAVE(c,"handRotationMatrixOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "handHorizontalPlaneOnOff", 0, t_MRleap, handHorizontalPlaneOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "handHorizontalPlaneOnOff", 0, "onoff", "HandPlane");
+	CLASS_ATTR_STYLE_LABEL(c, "handHorizontalPlaneOnOff", 0, "onoff", "HandPlaneOnOff");
 	CLASS_ATTR_SAVE(c,"handHorizontalPlaneOnOff", 0);
     /////////////////2.x stuff
     CLASS_ATTR_LONG(c, "handBasisOnOff", 0, t_MRleap, handBasisOnOff);
@@ -525,6 +501,10 @@ int T_EXPORT main(void)
     CLASS_ATTR_STYLE_LABEL(c, "armCenterOnOff", 0, "onoff", "ArmCenterOnOff");
     CLASS_ATTR_SAVE(c,"armCenterOnOff", 0);
     
+    CLASS_ATTR_LONG(c, "armCenterNormOnOff", 0, t_MRleap, armCenterNormOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armCenterNormOnOff", 0, "onoff", "ArmCenterNormOnOff");
+    CLASS_ATTR_SAVE(c,"armCenterNormOnOff", 0);
+    
     CLASS_ATTR_LONG(c, "armDirectionOnOff", 0, t_MRleap, armDirectionOnOff);
     CLASS_ATTR_STYLE_LABEL(c, "armDirectionOnOff", 0, "onoff", "ArmDirectionOnOff");
     CLASS_ATTR_SAVE(c,"armDirectionOnOff", 0);
@@ -533,9 +513,17 @@ int T_EXPORT main(void)
     CLASS_ATTR_STYLE_LABEL(c, "armElbowPositionOnOff", 0, "onoff", "ArmElbowPositionOnOff");
     CLASS_ATTR_SAVE(c,"armElbowPositionOnOff", 0);
     
+    CLASS_ATTR_LONG(c, "armElbowPositionNormOnOff", 0, t_MRleap, armElbowPositionNormOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armElbowPositionNormOnOff", 0, "onoff", "ArmElbowPositionNormOnOff");
+    CLASS_ATTR_SAVE(c,"armElbowPositionNormOnOff", 0);
+    
     CLASS_ATTR_LONG(c, "armWristPositionOnOff", 0, t_MRleap, armWristPositionOnOff);
     CLASS_ATTR_STYLE_LABEL(c, "armWristPositionOnOff", 0, "onoff", "ArmWristPositionOnOff");
     CLASS_ATTR_SAVE(c,"armWristPositionOnOff", 0);
+    
+    CLASS_ATTR_LONG(c, "armWristPositionNormOnOff", 0, t_MRleap, armWristPositionNormOnOff);
+    CLASS_ATTR_STYLE_LABEL(c, "armWristPositionNormOnOff", 0, "onoff", "ArmWristPositionNormOnOff");
+    CLASS_ATTR_SAVE(c,"armWristPositionNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "armWidthOnOff", 0, t_MRleap, armWidthOnOff);
     CLASS_ATTR_STYLE_LABEL(c, "armWidthOnOff", 0, "onoff", "ArmWidthOnOff");
@@ -543,148 +531,148 @@ int T_EXPORT main(void)
     /*********************************************************************/
     /*****************************Pointalbes******************************/
     CLASS_ATTR_LONG(c, "toolMainOnOff", 0, t_MRleap, toolMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolMainOnOff", 0, "onoff", "ToolMain");
+	CLASS_ATTR_STYLE_LABEL(c, "toolMainOnOff", 0, "onoff", "ToolMainOnOff");
 	CLASS_ATTR_SAVE(c,"toolMainOnOff", 0);
 
     CLASS_ATTR_LONG(c, "fingerMainOnOff", 0, t_MRleap, fingerMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerMainOnOff", 0, "onoff", "FingerMain");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerMainOnOff", 0, "onoff", "FingerMainOnOff");
 	CLASS_ATTR_SAVE(c,"fingerMainOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "toolDirectionOnOff", 0, t_MRleap, toolDirectionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolDirectionOnOff", 0, "onoff", "ToolDirection");
+	CLASS_ATTR_STYLE_LABEL(c, "toolDirectionOnOff", 0, "onoff", "ToolDirectionOnOff");
 	CLASS_ATTR_SAVE(c,"toolDirectionOnOff", 0);
 
     CLASS_ATTR_LONG(c, "fingerDirectionOnOff", 0, t_MRleap, fingerDirectionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerDirectionOnOff", 0, "onoff", "FingerDirection");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerDirectionOnOff", 0, "onoff", "FingerDirectionOnOff");
 	CLASS_ATTR_SAVE(c,"fingerDirectionOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "toolTipPositionOnOff", 0, t_MRleap, toolTipPositionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolTipPositionOnOff", 0, "onoff", "ToolTip");
+	CLASS_ATTR_STYLE_LABEL(c, "toolTipPositionOnOff", 0, "onoff", "ToolTipOnOff");
 	CLASS_ATTR_SAVE(c,"toolTipPositionOnOff", 0);
     
     CLASS_ATTR_LONG(c, "fingerTipPositionOnOff", 0, t_MRleap, fingerTipPositionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerTipPositionOnOff", 0, "onoff", "FingerTip");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerTipPositionOnOff", 0, "onoff", "FingerTipOnOff");
 	CLASS_ATTR_SAVE(c,"fingerTipPositionOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "toolTipNormOnOff", 0, t_MRleap, toolTipNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolTipNormOnOff", 0, "onoff", "ToolTipNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "toolTipNormOnOff", 0, "onoff", "ToolTipNormOnOff");
 	CLASS_ATTR_SAVE(c,"toolTipNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "fingerTipNormOnOff", 0, t_MRleap, fingerTipNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerTipNormOnOff", 0, "onoff", "FingerTipNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerTipNormOnOff", 0, "onoff", "FingerTipNormOnOff");
 	CLASS_ATTR_SAVE(c,"fingerTipNormOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "toolTipVelocityOnOff", 0, t_MRleap, toolTipVelocityOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolTipVelocityOnOff", 0, "onoff", "ToolTipVel");
+	CLASS_ATTR_STYLE_LABEL(c, "toolTipVelocityOnOff", 0, "onoff", "ToolTipVelOnOff");
 	CLASS_ATTR_SAVE(c,"toolTipVelocityOnOff", 0);
 
     CLASS_ATTR_LONG(c, "fingerTipVelocityOnOff", 0, t_MRleap, fingerTipVelocityOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerTipVelocityOnOff", 0, "onoff", "FingerTipVel ");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerTipVelocityOnOff", 0, "onoff", "FingerTipVelOnOff");
 	CLASS_ATTR_SAVE(c,"fingerTipVelocityOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "toolDimensionOnOff", 0, t_MRleap, toolDimensionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolDimensionOnOff", 0, "onoff", "ToolDim");
+	CLASS_ATTR_STYLE_LABEL(c, "toolDimensionOnOff", 0, "onoff", "ToolDimOnOff");
 	CLASS_ATTR_SAVE(c,"toolDimensionOnOff", 0);
     
     CLASS_ATTR_LONG(c, "fingerDimensionOnOff", 0, t_MRleap, fingerDimensionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerDimensionOnOff", 0, "onoff", "FingerDim ");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerDimensionOnOff", 0, "onoff", "FingerDimOnOff");
 	CLASS_ATTR_SAVE(c,"fingerDimensionOnOff", 0);
     //////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "toolTouchZoneOnOff", 0, t_MRleap, toolTouchZoneOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "toolTouchZoneOnOff", 0, "onoff", "ToolTouch");
+	CLASS_ATTR_STYLE_LABEL(c, "toolTouchZoneOnOff", 0, "onoff", "ToolTouchOnOff");
 	CLASS_ATTR_SAVE(c,"toolTouchZoneOnOff", 0);
     
     CLASS_ATTR_LONG(c, "fingerTouchZoneOnOff", 0, t_MRleap, fingerTouchZoneOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "fingerTouchZoneOnOff", 0, "onoff", "FingerTouch ");
+	CLASS_ATTR_STYLE_LABEL(c, "fingerTouchZoneOnOff", 0, "onoff", "FingerTouchOnOff");
 	CLASS_ATTR_SAVE(c,"fingerTouchZoneOnOff", 0);
     /****************************Finger 2.x*********************************/
     CLASS_ATTR_LONG(c, "fingerIsExtendedOnOff", 0, t_MRleap, fingerIsExtendedOnOff);
-    CLASS_ATTR_STYLE_LABEL(c, "fingerIsExtendedOnOff", 0, "onoff", "FingerIsExtendedOnOff ");
+    CLASS_ATTR_STYLE_LABEL(c, "fingerIsExtendedOnOff", 0, "onoff", "FingerIsExtendedOnOff");
     CLASS_ATTR_SAVE(c,"fingerIsExtendedOnOff", 0);
     /*********************************************************************/
     /*************************Gesture enable******************************/
     CLASS_ATTR_LONG(c, "gestureCircleOnOff", 0, t_MRleap, gestureCircleOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleOnOff", 0, "onoff", "CircleGesture");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleOnOff", 0, "onoff", "CircleGestureOnOff");
     CLASS_ATTR_ACCESSORS(c, "gestureCircleOnOff", NULL, MRleap_gestureCircleOnOff_set);
 	CLASS_ATTR_SAVE(c,"gestureCircleOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureKeyTapOnOff", 0, t_MRleap, gestureKeyTapOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapOnOff", 0, "onoff", "KeyTapGesture");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapOnOff", 0, "onoff", "KeyTapGestureOnOff");
     CLASS_ATTR_ACCESSORS(c, "gestureKeyTapOnOff", NULL, MRleap_gestureKeyTapOnOff_set);
 	CLASS_ATTR_SAVE(c,"gestureKeyTapOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureScreenTapOnOff", 0, t_MRleap, gestureScreenTapOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapOnOff", 0, "onoff", "ScreenTapGesture");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapOnOff", 0, "onoff", "ScreenTapGestureOnOff");
     CLASS_ATTR_ACCESSORS(c, "gestureScreenTapOnOff", NULL, MRleap_gestureScreenTapOnOff_set);
 	CLASS_ATTR_SAVE(c,"gestureScreenTapOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureSwipeOnOff", 0, t_MRleap, gestureSwipeOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipeOnOff", 0, "onoff", "SwipeGesture");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipeOnOff", 0, "onoff", "SwipeGestureOnOff");
     CLASS_ATTR_ACCESSORS(c, "gestureSwipeOnOff", NULL, MRleap_gestureSwipeOnOff_set);
 	CLASS_ATTR_SAVE(c,"gestureSwipeOnOff", 0);
     /********************************Gestures*************************************/
     CLASS_ATTR_LONG(c, "gestureCircleMainOnOff", 0, t_MRleap, gestureCircleMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleMainOnOff", 0, "onoff", "CircleMain ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleMainOnOff", 0, "onoff", "CircleMainOnOff");
 	CLASS_ATTR_SAVE(c,"gestureCircleMainOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureCircleCenterOnOff", 0, t_MRleap, gestureCircleCenterOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleCenterOnOff", 0, "onoff", "CircleCenter ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleCenterOnOff", 0, "onoff", "CircleCenterOnOff");
 	CLASS_ATTR_SAVE(c,"gestureCircleCenterOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureCircleCenterNormOnOff", 0, t_MRleap, gestureCircleCenterNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleCenterNormOnOff", 0, "onoff", "CircleCenterNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleCenterNormOnOff", 0, "onoff", "CircleCenterNormOnOff");
 	CLASS_ATTR_SAVE(c,"gestureCircleCenterNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureCircleDataOnOff", 0, t_MRleap, gestureCircleDataOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleDataOnOff", 0, "onoff", "CircleData");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureCircleDataOnOff", 0, "onoff", "CircleDataOnOff");
 	CLASS_ATTR_SAVE(c,"gestureCircleDataOnOff", 0);
     /////////////////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "gestureSwipeMainOnOff", 0, t_MRleap, gestureSwipeMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipeMainOnOff", 0, "onoff", "SwipeMain ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipeMainOnOff", 0, "onoff", "SwipeMainOnOff");
 	CLASS_ATTR_SAVE(c,"gestureSwipeMainOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureSwipePositionOnOff", 0, t_MRleap, gestureSwipePositionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipePositionOnOff", 0, "onoff", "SwipePosition ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipePositionOnOff", 0, "onoff", "SwipePositionOnOff");
 	CLASS_ATTR_SAVE(c,"gestureSwipePositionOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureSwipePositionNormOnOff", 0, t_MRleap, gestureSwipePositionNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipePositionNormOnOff", 0, "onoff", "SwipePosNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipePositionNormOnOff", 0, "onoff", "SwipePosNormOnOff");
 	CLASS_ATTR_SAVE(c,"gestureSwipePositionNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureSwipeDirectionOnOff", 0, t_MRleap, gestureSwipeDirectionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipeDirectionOnOff", 0, "onoff", "SwipeDirection");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureSwipeDirectionOnOff", 0, "onoff", "SwipeDirectionOnOff");
 	CLASS_ATTR_SAVE(c,"gestureSwipeDirectionOnOff", 0);
     /////////////////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "gestureKeyTapMainOnOff", 0, t_MRleap, gestureKeyTapMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapMainOnOff", 0, "onoff", "KeyTapMain ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapMainOnOff", 0, "onoff", "KeyTapMainOnOff");
 	CLASS_ATTR_SAVE(c,"gestureKeyTapMainOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureKeyTapPositionOnOff", 0, t_MRleap, gestureKeyTapPositionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapPositionOnOff", 0, "onoff", "KeyTapPosition ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapPositionOnOff", 0, "onoff", "KeyTapPositionOnOff");
 	CLASS_ATTR_SAVE(c,"gestureKeyTapPositionOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureKeyTapPositionNormOnOff", 0, t_MRleap, gestureKeyTapPositionNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapPositionNormOnOff", 0, "onoff", "KeyTapPosNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapPositionNormOnOff", 0, "onoff", "KeyTapPosNormOnOff");
 	CLASS_ATTR_SAVE(c,"gestureKeyTapPositionNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureKeyTapDirectionOnOff", 0, t_MRleap, gestureKeyTapDirectionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapDirectionOnOff", 0, "onoff", "KeyTapDirection");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureKeyTapDirectionOnOff", 0, "onoff", "KeyTapDirectionOnOff");
 	CLASS_ATTR_SAVE(c,"gestureKeyTapDirectionOnOff", 0);
     /////////////////////////////////////////////////////////////////////////////////
     CLASS_ATTR_LONG(c, "gestureScreenTapMainOnOff", 0, t_MRleap, gestureScreenTapMainOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapMainOnOff", 0, "onoff", "ScreenTapMain ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapMainOnOff", 0, "onoff", "ScreenTapMainOnOff");
 	CLASS_ATTR_SAVE(c,"gestureScreenTapMainOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureScreenTapPositionOnOff", 0, t_MRleap, gestureScreenTapPositionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapPositionOnOff", 0, "onoff", "ScreenTapPosition ");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapPositionOnOff", 0, "onoff", "ScreenTapPositionOnOff");
 	CLASS_ATTR_SAVE(c,"gestureScreenTapPositionOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureScreenTapPositionNormOnOff", 0, t_MRleap, gestureScreenTapPositionNormOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapPositionNormOnOff", 0, "onoff", "ScreenTapPosNorm");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapPositionNormOnOff", 0, "onoff", "ScreenTapPosNormOnOff");
 	CLASS_ATTR_SAVE(c,"gestureScreenTapPositionNormOnOff", 0);
     
     CLASS_ATTR_LONG(c, "gestureScreenTapDirectionOnOff", 0, t_MRleap, gestureScreenTapDirectionOnOff);
-	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapDirectionOnOff", 0, "onoff", "ScreenTapDirection");
+	CLASS_ATTR_STYLE_LABEL(c, "gestureScreenTapDirectionOnOff", 0, "onoff", "ScreenTapDirectionOnOff");
 	CLASS_ATTR_SAVE(c,"gestureScreenTapDirectionOnOff", 0);
     /*****************************Gesture info****************************/
     //////gesture attributes
@@ -752,23 +740,21 @@ int T_EXPORT main(void)
     CLASS_ATTR_ORDER(c, "frameHist",                            0, "1");
     CLASS_ATTR_ORDER(c, "allDegOnOff",                          0, "2");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "imageOnOff",                           0, "3");    //RENUMBERING  NECCESSARY
+    CLASS_ATTR_ORDER(c, "imageOnOff",                           0, "3");
     CLASS_ATTR_ORDER(c, "imageDistortionOnOff",                 0, "4");
     ///////////////////////////////////////////////////////////////////////
     CLASS_ATTR_ORDER(c, "frameMainOnOff",                       0, "5");
     CLASS_ATTR_ORDER(c, "frameRotOnOff",                        0, "6");
-    CLASS_ATTR_ORDER(c, "frameRotRawOnOff",                     0, "7");
-    CLASS_ATTR_ORDER(c, "frameRotProb",                         0, "8");
+    CLASS_ATTR_ORDER(c, "frameRotProb",                         0, "7");
+    CLASS_ATTR_ORDER(c, "frameRotRawOnOff",                     0, "8");
     CLASS_ATTR_ORDER(c, "frameScaleOnOff",                      0, "9");
-    CLASS_ATTR_ORDER(c, "frameScaleRawOnOff",                   0, "10");
-    CLASS_ATTR_ORDER(c, "frameScaleProb",                       0, "11");
+    CLASS_ATTR_ORDER(c, "frameScaleProb",                       0, "10");
+    CLASS_ATTR_ORDER(c, "frameScaleRawOnOff",                   0, "11");
     CLASS_ATTR_ORDER(c, "frameTranslationOnOff",                0, "12");
-    CLASS_ATTR_ORDER(c, "frameTranslationRawOnOff",             0, "13");
+    CLASS_ATTR_ORDER(c, "frameTranslationProb",                 0, "13");
     CLASS_ATTR_ORDER(c, "frameTranslationNormOnOff",            0, "14");
-    CLASS_ATTR_ORDER(c, "frameTranslationProb",                 0, "15");
+    CLASS_ATTR_ORDER(c, "frameTranslationRawOnOff",             0, "15");
     CLASS_ATTR_ORDER(c, "frameRotationMatrixOnOff",             0, "16");
-//    CLASS_ATTR_ORDER(c, "rightmostOnOff",                       0, "14");
-//    CLASS_ATTR_ORDER(c, "leftmostOnOff",                        0, "14");
     ///////////////////////////////////////////////////////////////////////
     CLASS_ATTR_ORDER(c, "handMainOnOff",                        0, "17");
     CLASS_ATTR_ORDER(c, "handSphereOnOff",                      0, "18");
@@ -778,83 +764,83 @@ int T_EXPORT main(void)
     CLASS_ATTR_ORDER(c, "handPositionStabilizationOnOff",       0, "22");
     CLASS_ATTR_ORDER(c, "handPositionVelocityOnOff",            0, "23");
     CLASS_ATTR_ORDER(c, "handRotationOnOff",                    0, "24");
-    CLASS_ATTR_ORDER(c, "handRotationRawOnOff",                 0, "25");
-    CLASS_ATTR_ORDER(c, "handRotationProb",                     0, "26");
+    CLASS_ATTR_ORDER(c, "handRotationProb",                     0, "25");
+    CLASS_ATTR_ORDER(c, "handRotationRawOnOff",                 0, "26");
     CLASS_ATTR_ORDER(c, "handScaleOnOff",                       0, "27");
-    CLASS_ATTR_ORDER(c, "handScaleRawOnOff",                    0, "28");
-    CLASS_ATTR_ORDER(c, "handScaleProb",                        0, "29");
+    CLASS_ATTR_ORDER(c, "handScaleProb",                        0, "28");
+    CLASS_ATTR_ORDER(c, "handScaleRawOnOff",                    0, "29");
     CLASS_ATTR_ORDER(c, "handTranslationOnOff",                 0, "30");
-    CLASS_ATTR_ORDER(c, "handTranslationRawOnOff",              0, "31");
-    CLASS_ATTR_ORDER(c, "handTranslationNormOnOff",             0, "32");
-    CLASS_ATTR_ORDER(c, "handTranslationProb",                  0, "33");
+    CLASS_ATTR_ORDER(c, "handTranslationProb",                  0, "31");
+    CLASS_ATTR_ORDER(c, "handTranslationRawOnOff",              0, "32");
+    CLASS_ATTR_ORDER(c, "handTranslationNormOnOff",             0, "33");
     CLASS_ATTR_ORDER(c, "handRotationMatrixOnOff",              0, "34");
     CLASS_ATTR_ORDER(c, "handHorizontalPlaneOnOff",             0, "35");
     //////2.x stuff
     CLASS_ATTR_ORDER(c, "handBasisOnOff",                       0, "36");
-    //////
     ///////////////////////////////////////////////////////////////////////
     CLASS_ATTR_ORDER(c, "armBasisOnOff",                        0, "37");
     CLASS_ATTR_ORDER(c, "armCenterOnOff",                       0, "38");
-    CLASS_ATTR_ORDER(c, "armDirectionOnOff",                    0, "39");
-    CLASS_ATTR_ORDER(c, "armElbowPositionOnOff",                0, "40");
-    CLASS_ATTR_ORDER(c, "armWristPositionOnOff",                0, "41");
-    CLASS_ATTR_ORDER(c, "armWidthOnOff",                        0, "42");
-    
+    CLASS_ATTR_ORDER(c, "armCenterNormOnOff",                   0, "39");
+    CLASS_ATTR_ORDER(c, "armDirectionOnOff",                    0, "40");
+    CLASS_ATTR_ORDER(c, "armElbowPositionOnOff",                0, "41");
+    CLASS_ATTR_ORDER(c, "armElbowPositionNormOnOff",            0, "42");
+    CLASS_ATTR_ORDER(c, "armWristPositionOnOff",                0, "43");
+    CLASS_ATTR_ORDER(c, "armWristPositionNormOnOff",            0, "44");
+    CLASS_ATTR_ORDER(c, "armWidthOnOff",                        0, "45");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "fingerMainOnOff",                      0, "43");
-    CLASS_ATTR_ORDER(c, "fingerDirectionOnOff",                 0, "44");
-    CLASS_ATTR_ORDER(c, "fingerTipPositionOnOff",               0, "45");
-    CLASS_ATTR_ORDER(c, "fingerTipNormOnOff",                   0, "46");
-    CLASS_ATTR_ORDER(c, "fingerTipVelocityOnOff",               0, "47");
-    CLASS_ATTR_ORDER(c, "fingerDimensionOnOff",                 0, "48");
-    CLASS_ATTR_ORDER(c, "fingerTouchZoneOnOff",                 0, "49");
+    CLASS_ATTR_ORDER(c, "fingerMainOnOff",                      0, "46");
+    CLASS_ATTR_ORDER(c, "fingerDirectionOnOff",                 0, "47");
+    CLASS_ATTR_ORDER(c, "fingerTipPositionOnOff",               0, "48");
+    CLASS_ATTR_ORDER(c, "fingerTipNormOnOff",                   0, "49");
+    CLASS_ATTR_ORDER(c, "fingerTipVelocityOnOff",               0, "50");
+    CLASS_ATTR_ORDER(c, "fingerDimensionOnOff",                 0, "51");
+    CLASS_ATTR_ORDER(c, "fingerTouchZoneOnOff",                 0, "52");
     ///////2.x stuff
-    CLASS_ATTR_ORDER(c, "fingerIsExtendedOnOff",                0, "50");
+    CLASS_ATTR_ORDER(c, "fingerIsExtendedOnOff",                0, "53");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "toolMainOnOff",                        0, "51");
-    CLASS_ATTR_ORDER(c, "toolDirectionOnOff",                   0, "52");
-    CLASS_ATTR_ORDER(c, "toolTipPositionOnOff",                 0, "53");
-    CLASS_ATTR_ORDER(c, "toolTipNormOnOff",                     0, "54");
-    CLASS_ATTR_ORDER(c, "toolTipVelocityOnOff",                 0, "55");
-    CLASS_ATTR_ORDER(c, "toolDimensionOnOff",                   0, "56");
-    CLASS_ATTR_ORDER(c, "toolTouchZoneOnOff",                   0, "57");
+    CLASS_ATTR_ORDER(c, "toolMainOnOff",                        0, "54");
+    CLASS_ATTR_ORDER(c, "toolDirectionOnOff",                   0, "55");
+    CLASS_ATTR_ORDER(c, "toolTipPositionOnOff",                 0, "56");
+    CLASS_ATTR_ORDER(c, "toolTipNormOnOff",                     0, "57");
+    CLASS_ATTR_ORDER(c, "toolTipVelocityOnOff",                 0, "58");
+    CLASS_ATTR_ORDER(c, "toolDimensionOnOff",                   0, "59");
+    CLASS_ATTR_ORDER(c, "toolTouchZoneOnOff",                   0, "60");
     //////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureCircleOnOff",                   0, "58");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapOnOff",                   0, "59");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapOnOff",                0, "60");
-    CLASS_ATTR_ORDER(c, "gestureSwipeOnOff",                    0, "61");
+    CLASS_ATTR_ORDER(c, "gestureCircleOnOff",                   0, "61");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapOnOff",                   0, "62");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapOnOff",                0, "63");
+    CLASS_ATTR_ORDER(c, "gestureSwipeOnOff",                    0, "64");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureCircleMainOnOff",               0, "62");
-    CLASS_ATTR_ORDER(c, "gestureCircleCenterOnOff",             0, "63");
-    CLASS_ATTR_ORDER(c, "gestureCircleCenterNormOnOff",         0, "64");
-    CLASS_ATTR_ORDER(c, "gestureCircleDataOnOff",               0, "65");
+    CLASS_ATTR_ORDER(c, "gestureCircleMainOnOff",               0, "65");
+    CLASS_ATTR_ORDER(c, "gestureCircleCenterOnOff",             0, "66");
+    CLASS_ATTR_ORDER(c, "gestureCircleCenterNormOnOff",         0, "67");
+    CLASS_ATTR_ORDER(c, "gestureCircleDataOnOff",               0, "68");
+    //////////////////////////////////////////////////////////////////////
+    CLASS_ATTR_ORDER(c, "gestureSwipeMainOnOff",                0, "69");
+    CLASS_ATTR_ORDER(c, "gestureSwipePositionOnOff",            0, "70");
+    CLASS_ATTR_ORDER(c, "gestureSwipePositionNormOnOff",        0, "71");
+    CLASS_ATTR_ORDER(c, "gestureSwipeDirectionOnOff",           0, "72");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureSwipeMainOnOff",                0, "66");
-    CLASS_ATTR_ORDER(c, "gestureSwipePositionOnOff",            0, "67");
-    CLASS_ATTR_ORDER(c, "gestureSwipePositionNormOnOff",        0, "68");
-    CLASS_ATTR_ORDER(c, "gestureSwipeDirectionOnOff",           0, "69");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapMainOnOff",               0, "73");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionOnOff",           0, "74");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionNormOnOff",       0, "75");
+    CLASS_ATTR_ORDER(c, "gestureKeyTapDirectionOnOff",          0, "76");
     ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureKeyTapMainOnOff",               0, "70");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionOnOff",           0, "71");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapPositionNormOnOff",       0, "72");
-    CLASS_ATTR_ORDER(c, "gestureKeyTapDirectionOnOff",          0, "73");
-    ///////////////////////////////////////////////////////////////////////
-    CLASS_ATTR_ORDER(c, "gestureScreenTapMainOnOff",            0, "74");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionOnOff",        0, "75");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionNormOnOff",    0, "76");
-    CLASS_ATTR_ORDER(c, "gestureScreenTapDirectionOnOff",       0, "77");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapMainOnOff",            0, "77");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionOnOff",        0, "78");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapPositionNormOnOff",    0, "79");
+    CLASS_ATTR_ORDER(c, "gestureScreenTapDirectionOnOff",       0, "80");
     //////gesture attributes
-
-    CLASS_ATTR_ORDER(c, "circleMinRadius",                      0, "78");
-    CLASS_ATTR_ORDER(c, "circleMinArc",                         0, "79");
-    CLASS_ATTR_ORDER(c, "swipeMinLength",                       0, "80");
-    CLASS_ATTR_ORDER(c, "swipeMinVelocity",                     0, "81");
-    CLASS_ATTR_ORDER(c, "keyTapMinDownVelocity",                0, "82");
-    CLASS_ATTR_ORDER(c, "keyTapHistorySeconds",                 0, "83");
-    CLASS_ATTR_ORDER(c, "keyTapMinDistance",                    0, "84");
-    CLASS_ATTR_ORDER(c, "screenTapMinForwardVelocity",          0, "85");
-    CLASS_ATTR_ORDER(c, "screenTapHistorySeconds",              0, "86");
-    CLASS_ATTR_ORDER(c, "screenTapMinDistance",                 0, "87");
+    CLASS_ATTR_ORDER(c, "circleMinRadius",                      0, "81");
+    CLASS_ATTR_ORDER(c, "circleMinArc",                         0, "82");
+    CLASS_ATTR_ORDER(c, "swipeMinLength",                       0, "83");
+    CLASS_ATTR_ORDER(c, "swipeMinVelocity",                     0, "84");
+    CLASS_ATTR_ORDER(c, "keyTapMinDownVelocity",                0, "85");
+    CLASS_ATTR_ORDER(c, "keyTapHistorySeconds",                 0, "86");
+    CLASS_ATTR_ORDER(c, "keyTapMinDistance",                    0, "87");
+    CLASS_ATTR_ORDER(c, "screenTapMinForwardVelocity",          0, "88");
+    CLASS_ATTR_ORDER(c, "screenTapHistorySeconds",              0, "89");
+    CLASS_ATTR_ORDER(c, "screenTapMinDistance",                 0, "90");
     /*********************************************************************/
     
 	class_register(CLASS_BOX, c);
@@ -870,7 +856,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     
 	x = (t_MRleap *)object_alloc((t_class *)MRleap_class);
     
-    object_post((t_object *)x, "MRleap 0.2.3 for The Leap 2.1");
+    object_post((t_object *)x, "MRleap 0.4.1 for The Leap 2.1");
     
     x->prevFrameID                      = 0;
     x->frameHist                        = 1;
@@ -891,12 +877,6 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->frameTranslationRawOnOff         = false;
     x->frameTranslationNormOnOff        = false;
     x->frameRotationMatrix              = false;
-    x->rightmostOnOff                   = false;
-    x->leftmostOnOff                    = false;
-    x->rightmostID                      = -1;
-    x->leftmostID                       = -1;
-    x->prevRightmostID                  = -1;
-    x->prevLeftmostID                   = -1;
     ///////////hand
     x->handMainOnOff                    = false;
     x->handSphereOnOff                  = false;
@@ -964,7 +944,29 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->gestureScreenTapPositionOnOff    = false;
     x->gestureScreenTapPositionNormOnOff= false;
     x->gestureScreenTapDirectionOnOff   = false;
-
+    //default gesture values
+    x->circleMinRadiusDef              = 5.;
+    x->circleMinArcDef                 = 1.5 * Leap::PI;
+    x->swipeMinLengthDef               = 150;
+    x->swipeMinVelocityDef             = 1000;
+    x->keyTapMinDownVelocityDef        = 50;
+    x->keyTapHistorySecondsDef         = 0.1;
+    x->keyTapMinDistanceDef            = 3;
+    x->screenTapMinForwardVelocityDef  = 50;
+    x->screenTapHistorySecondsDef      = 0.1;
+    x->screenTapMinDistanceDef         = 5;
+    
+    
+    x->circleMinRadius                  = x->circleMinRadiusDef;
+    x->circleMinArc                     = x->circleMinArcDef;
+    x->swipeMinLength                   = x->swipeMinLengthDef;
+    x->swipeMinVelocity                 = x->swipeMinVelocityDef;
+    x->keyTapMinDownVelocity            = x->keyTapMinDownVelocityDef;
+    x->keyTapHistorySeconds             = x->keyTapHistorySecondsDef;
+    x->keyTapMinDistance                = x->keyTapMinDistanceDef;
+    x->screenTapMinForwardVelocity      = x->screenTapMinForwardVelocityDef;
+    x->screenTapHistorySeconds          = x->screenTapHistorySecondsDef;
+    x->screenTapMinDistance             = x->screenTapMinDistanceDef;
     
     /////////outlets
     x->matrix_nameLeft  = gensym("leapCameraLeft");
@@ -1041,8 +1043,8 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     x->fingerNames[3]           = gensym("Ring");
     x->fingerNames[4]           = gensym("Pinky");
     
-    x->RIGHT = gensym("rightmost");
-    x->LEFT  = gensym("leftmost");
+    x->RIGHT = gensym("right");
+    x->LEFT  = gensym("left");
     x->HAND  = x->LEFT;
     x->OTHER = gensym("other");
     
@@ -1058,7 +1060,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     ////////gesture attr default
     //////////gesture attr
     
-    MRleap_gestureResetAll(x);
+//    MRleap_gestureResetAll(x);
     
 	return (x);
 }
@@ -1072,8 +1074,8 @@ void MRleap_checkLeapConnection(t_MRleap *x)
     }
     else {
         
-        error_sym(x, gensym("No Leap found or unable to connect..."));
-        error_sym(x, gensym("reattempting to connect on bang..."));
+        object_error((t_object *)x, "No Leap found or unable to connect...");
+        object_error((t_object *)x, "reattempting to connect on bang...");
     }
 }
 /************************************/
@@ -1176,26 +1178,9 @@ void MRleap_bang(t_MRleap *x)
     else if (!x->leap->isConnected())    {
         //try to connect again if connection failed
     
-        
         jit_error_sym(x, gensym("Trying to connect to Leap..."));
         
         MRleap_checkLeapConnection(x);
-        
-/* 
-    //for testing output when I have no leap on me...
- 
-        t_atom handMain[6];
-        
-        atom_setsym(handMain,       gensym("handMain"));
-        atom_setlong(handMain+1,    55.5);
-        atom_setlong(handMain+2,    rand());
-        atom_setlong(handMain+3,    rand() * 1000); //sec -> ms
-        atom_setlong(handMain+4,    22.2);
-        atom_setlong(handMain+5,    rand() + 22);
-        
-        
-        outlet_anything(x->outletHands, x->HAND, 6, handMain);
- */
     }
 }
 /************************************/
@@ -1351,7 +1336,7 @@ void MRleap_getFrameData(t_MRleap *x, Leap::Frame frame)
         
         for (int i = 1; i < 10; i++)    {
             
-            atom_setfloat(frameRotationMatrix + i, array.m_array[i]);
+            atom_setfloat(frameRotationMatrix + i, array.m_array[i - 1]);
         }
         
         outlet_anything(x->outletFrame, x->s_rotationMatrix, 10, frameRotationMatrix);
@@ -1372,14 +1357,102 @@ void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
         if (image.isValid() && image2.isValid()) {
            
             
-            MRleap_getImage(x, image, x->matrix_nameLeft);
+   //         MRleap_getImage(x, image, x->matrix_nameLeft);
             
-            MRleap_getImage(x, image2, x->matrix_nameRight);
+     //       MRleap_getImage(x, image2, x->matrix_nameRight);
+            
+            MRleap_getDistortion(x, image);
         }
         else    {
             jit_error_sym(x, gensym("No valid images available from leap"));
         }
     }
+}
+/************************************/
+void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
+{
+    void *matrix;
+    long i,j;
+    long savelock = 0, offset0, offset1;
+    t_jit_matrix_info minfo;
+    double *bp, *p;
+    
+    
+    
+    
+    const float *distortion_buffer = image.distortion();
+    
+    long buffer_size = image.distortionWidth() * image.distortionHeight() * 4;
+    
+    
+    
+    matrix = jit_object_findregistered(gensym("distortionMap"));
+    
+    if (matrix && jit_object_method(matrix, _jit_sym_class_jit_matrix)) {
+        
+        
+        savelock  = (long) jit_object_method(matrix,_jit_sym_lock, 1);
+        jit_object_method(matrix,_jit_sym_getinfo,&minfo);
+        jit_object_method(matrix,_jit_sym_getdata,&bp);
+        
+        
+        if ((!bp)||(x->plane >= minfo.planecount)||(x->plane < 0)) {
+            
+            jit_error_sym(x, _jit_sym_err_calculate);
+            jit_object_method(matrix, _jit_sym_lock, savelock);
+            goto out;
+        }
+        
+        minfo.type          = _jit_sym_float32;
+        minfo.dimcount      = 2;
+        minfo.planecount    = 2;
+        minfo.dim[0]        = image.distortionWidth();
+        minfo.dim[1]        = image.distortionHeight();
+        
+        jit_object_method(matrix, _jit_sym_setinfo, &minfo);
+        
+        
+        //limited to filling at most into 2 dimensions per list
+        offset0 = (x->offsetcount>0)?x->offset[0]:0;
+        offset1 = (x->offsetcount>1)?x->offset[1]:0;
+        CLIP_ASSIGN(offset0, 0, minfo.dim[0]-1);
+        CLIP_ASSIGN(offset1, 0, minfo.dim[1]-1);
+        CLIP_ASSIGN(buffer_size,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
+        j = offset0 + offset1 * minfo.dim[0];
+        
+        bp += x->plane * 4;
+        
+        for (i = 0; i < buffer_size; i++, j++) {
+            
+            p = bp + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0];
+            
+            float value = distortion_buffer[i];
+            
+            
+            
+            if (value >= 0. && value <= 1.) {
+            
+                *((float *)p) = value;
+            }
+            else {
+             
+                post("sym %d", i);
+            }
+        }
+
+//          post("distortion = %f",CLAMP(distortion_buffer[i], 0., 1.));
+        jit_object_method(matrix,_jit_sym_lock,savelock);
+        
+    }
+    else {
+        
+        jit_error_sym(x,_jit_sym_err_calculate);
+        goto out;
+    }
+    
+out:
+    
+    return;
 }
 /************************************/
 void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
@@ -1408,27 +1481,24 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
             jit_object_method(matrix, _jit_sym_lock, savelock);
             goto out;
         }
-        
-//        if (x->prevDim[0] != image.width() || x->prevDim[1] != image.height())  {//needs to check for matrix name otherwise minfo will only update the first matrix!!!
-        
-            minfo.type          = _jit_sym_char;
-            minfo.dimcount      = 2;
-            minfo.planecount    = 1;
-            minfo.dim[0]        = image.width();
-            minfo.dim[1]        = image.height();
+    
+        minfo.type          = _jit_sym_char;
+        minfo.dimcount      = 2;
+        minfo.planecount    = 1;
+        minfo.dim[0]        = image.width();
+        minfo.dim[1]        = image.height();
             
-            jit_object_method(matrix, _jit_sym_setinfo, &minfo);
+        jit_object_method(matrix, _jit_sym_setinfo, &minfo);
             
-            x->prevDim[0] = image.width();
-            x->prevDim[1] = image.height();
- //       }
+//        x->prevDim[0] = image.width();
+//        x->prevDim[1] = image.height();
         
 
-        imageBufferLength = image.width() * image.height();
+        x->imageBufferLength = image.width() * image.height();
         
 //        post("width = %d   height = %d   length = %d    ", image.width(), image.height(), imageBufferLength);
         
-        const unsigned char* image_buffer   = image.data();
+//        const unsigned char* image_buffer   = image.data();
         
         
         //limited to filling at most into 2 dimensions per list
@@ -1436,39 +1506,26 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
         offset1 = (x->offsetcount>1)?x->offset[1]:0;
         CLIP_ASSIGN(offset0, 0, minfo.dim[0]-1);
         CLIP_ASSIGN(offset1, 0, minfo.dim[1]-1);
-        CLIP_ASSIGN(imageBufferLength,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
+        CLIP_ASSIGN(x->imageBufferLength,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
         j = offset0 + offset1 * minfo.dim[0];
         
         bp += x->plane;
         
-        for (i = 0; i < imageBufferLength; i++, j++) {
+        for (i = 0; i < x->imageBufferLength; i++, j++) {
             
             p   = bp + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0];
             
              if (x->imageDistortionOnOff) {
-                 //apply texture map
-                 
-/*                 int targetWidth = 640;
-                 int targetHeight = 480;
-                 
-                 unsigned char brightness[4] = {0,0,0,255}; //An array to hold the rgba color components
-                 
-                 Leap::Vector input = Leap::Vector(image.data()/targetWidth, image.data()/targetHeight, 0);
-                 
-                 //Convert from normalized [0..1] to slope [-4..4]
-                 input.x = (input.x - image.rayOffsetX()) / image.rayScaleX();
-                 input.y = (input.y - image.rayOffsetY()) / image.rayScaleY();
- */
+
+                    //NOT IMPLEMENTED YET
  
-                 
-                 
                 *((uchar *)p)   = abs(image.data()[i] -255);
              }
             
              else {
                  
              
-                *((uchar *)p)   = image_buffer[i];
+                *((uchar *)p)   = image.data()[i];
              }
         }
         
@@ -1636,7 +1693,7 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 atom_setfloat(handRotRaw+7,      hand.rotationAxis(x->leap->frame(1))[2]);
                 atom_setfloat(handRotRaw+8,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::xAxis()) * MRleap_RadDeg(x));
                 atom_setfloat(handRotRaw+9,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::yAxis()) * MRleap_RadDeg(x));
-                atom_setfloat(handRotRaw+10,      hand.rotationAngle(x->leap->frame(1), Leap::Vector::zAxis()) * MRleap_RadDeg(x));
+                atom_setfloat(handRotRaw+10,     hand.rotationAngle(x->leap->frame(1), Leap::Vector::zAxis()) * MRleap_RadDeg(x));
                 
                 
                 outlet_anything(x->outletHands, x->HAND, 11, handRotRaw);
@@ -1728,7 +1785,7 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 
                 for (int i = 4; i < 13; i++)    {
                     
-                    atom_setfloat(handRotationMatrix + i, array.m_array[i]);
+                    atom_setfloat(handRotationMatrix + i, array.m_array[i - 4]);
                 }
                 
                 outlet_anything(x->outletHands, x->HAND, 13, handRotationMatrix);
@@ -1765,13 +1822,11 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
                 
                 for (int i = 4; i < 13; i++)    {
                     
-                    atom_setfloat(handBasis + i, array.m_array[i]);
+                    atom_setfloat(handBasis + i, array.m_array[i - 4]);
                 }
 
                 
                 outlet_anything(x->outletHands, x->HAND, 13, handBasis);
-
-                
             }
         }
     }
@@ -1787,11 +1842,12 @@ void MRleap_getArmData(t_MRleap *x, Leap::Frame frame)
     
         Leap::Arm arm = hands[i].arm();
         Leap::Hand  hand = hands[i];
+
+       if (arm.isValid())  {
         
-        if (arm.isValid())  {
-        
+            MRleap_assignHandID(x, hand);
             long handID             = hand.id();
-            
+
             if (x->armBasisOnOff)   {
                 
                 Leap::FloatArray array = arm.basis().toArray3x3();
@@ -1802,80 +1858,80 @@ void MRleap_getArmData(t_MRleap *x, Leap::Frame frame)
                 atom_setlong(armBasis+1,       handID);
                 atom_setlong(armBasis+2,       x->curFrameID);
                 
-                for (int i = 3; i < 13; i++)    {
+                for (int i = 3; i < 12; i++)    {
                     
-                    atom_setfloat(armBasis + i, array.m_array[i]);
+                    atom_setfloat(armBasis + i, array.m_array[i - 3]);
                 }
-                
+  
                 
                 outlet_anything(x->outletArms, x->HAND, 12, armBasis);
             }
-            
+ 
             if (x->armCenterOnOff)  {
                 
-                Leap::Vector center = arm.center();
+                Leap::Vector center = MRleap_normalizeVec(x, frame, arm.center(), x->armCenterNormOnOff);
                 
                 t_atom armCenter[6];
                 
                 atom_setsym(armCenter,      x->s_center);
                 atom_setlong(armCenter+1,   handID);
                 atom_setlong(armCenter+2,   x->curFrameID);
-                atom_setlong(armCenter+3,   center.x);
-                atom_setlong(armCenter+4,   center.z);
-                atom_setlong(armCenter+5,   center.x);
+                atom_setfloat(armCenter+3,   center.x);
+                atom_setfloat(armCenter+4,   center.z);
+                atom_setfloat(armCenter+5,   center.x);
                 
                 outlet_anything(x->outletArms, x->HAND, 6, armCenter);
             }
-            
+ 
             if (x->armDirectionOnOff)   {
              
-                Leap::Vector direction = arm.center();
+                Leap::Vector direction = arm.direction();
                 
                 t_atom armDirection[6];
                 
                 atom_setsym(armDirection,      x->s_direction);
                 atom_setlong(armDirection+1,   handID);
                 atom_setlong(armDirection+2,   x->curFrameID);
-                atom_setlong(armDirection+3,   direction.x);
-                atom_setlong(armDirection+4,   direction.z);
-                atom_setlong(armDirection+5,   direction.x);
+                atom_setfloat(armDirection+3,   direction.x);
+                atom_setfloat(armDirection+4,   direction.z);
+                atom_setfloat(armDirection+5,   direction.x);
                 
                 outlet_anything(x->outletArms, x->HAND, 6, armDirection);
 
             }
-            
+ 
             if (x->armElbowPositionOnOff)   {
                 
-                Leap::Vector position = arm.elbowPosition();
+                Leap::Vector position = MRleap_normalizeVec(x, frame, arm.elbowPosition(), x->armElbowPositionNormOnOff);
                 
                 t_atom elbowPosition[6];
                 
                 atom_setsym(elbowPosition,      x->s_elbowPosition);
                 atom_setlong(elbowPosition+1,   handID);
                 atom_setlong(elbowPosition+2,   x->curFrameID);
-                atom_setlong(elbowPosition+3,   position.x);
-                atom_setlong(elbowPosition+4,   position.z);
-                atom_setlong(elbowPosition+5,   position.x);
+                atom_setfloat(elbowPosition+3,   position.x);
+                atom_setfloat(elbowPosition+4,   position.z);
+                atom_setfloat(elbowPosition+5,   position.x);
                 
                 outlet_anything(x->outletArms, x->HAND, 6, elbowPosition);
             }
-            
+
             if (x->armWristPositionOnOff)   {
                 
-                Leap::Vector position = arm.wristPosition();
+                Leap::Vector position = MRleap_normalizeVec(x, frame, arm.wristPosition(), x->armWristPositionNormOnOff);
                 
                 t_atom wristPosition[6];
                 
                 atom_setsym(wristPosition,      x->s_wristPosition);
                 atom_setlong(wristPosition+1,   handID);
                 atom_setlong(wristPosition+2,   x->curFrameID);
-                atom_setlong(wristPosition+3,   position.x);
-                atom_setlong(wristPosition+4,   position.z);
-                atom_setlong(wristPosition+5,   position.x);
+                atom_setfloat(wristPosition+3,   position.x);
+                atom_setfloat(wristPosition+4,   position.z);
+                atom_setfloat(wristPosition+5,   position.x);
                 
                 outlet_anything(x->outletArms, x->HAND, 6, wristPosition);
             }
-            
+
             if (x->armWidthOnOff)   {
                 
                 Leap::Vector wristPosition = arm.wristPosition();
@@ -1888,7 +1944,7 @@ void MRleap_getArmData(t_MRleap *x, Leap::Frame frame)
                 atom_setsym(width,      x->s_width);
                 atom_setlong(width+1,   handID);
                 atom_setlong(width+2,   x->curFrameID);
-                atom_setlong(width+3,   displacement.magnitude());
+                atom_setfloat(width+3,   displacement.magnitude());
                 
                 outlet_anything(x->outletArms, x->HAND, 4, width);
             }
@@ -2088,7 +2144,7 @@ void MRleap_getFingerData(t_MRleap *x,  Leap::Frame frame)
                     atom_setlong(pointVel+1,    pointID);
                     atom_setlong(pointVel+2,    handID);
                     atom_setlong(pointVel+3,    x->curFrameID);
-                    atom_setsym(pointVel+4,       x->fingerNames[finger.type()]);
+                    atom_setsym(pointVel+4,     x->fingerNames[finger.type()]);
                     atom_setfloat(pointVel+5,   finger.tipVelocity().x);
                     atom_setfloat(pointVel+6,   finger.tipVelocity().y);
                     atom_setfloat(pointVel+7,   finger.tipVelocity().z);
@@ -2153,8 +2209,7 @@ void MRleap_getGestureData(t_MRleap *x, Leap::Frame frame)
         for (int i = 0; i < gestureCount; i++)  {
             
             Leap::Gesture gesture = frame.gestures()[i];
-            
-            
+                        
             //getting gestures is expensive... really making sure to only get one if we want/need one
             if(x->leap->isGestureEnabled(Leap::Gesture::TYPE_CIRCLE) && x->gestureCircleOnOff){
      
@@ -2195,8 +2250,9 @@ void MRleap_processCircleData(t_MRleap *x, Leap::Frame frame, Leap::Gesture gest
     Leap::CircleGesture circle = Leap::CircleGesture(gesture);
     Leap::Pointable circlePointable = circle.pointable();
     
-    
-    MRleap_assignHandID(x, circlePointable.hand());
+   if (circlePointable.isFinger())  {
+
+       MRleap_assignHandID(x, circlePointable.hand());
     
     if (x->gestureCircleMainOnOff)  {
         
@@ -2263,13 +2319,14 @@ void MRleap_processCircleData(t_MRleap *x, Leap::Frame frame, Leap::Gesture gest
         
         outlet_anything(x->outletGestures, x->HAND, 9, circleData);
     }
+   }
 }
 /************************************/
 /************************************/
 void MRleap_circleGestureReset(t_MRleap *x)
 {
-    x->circleMinRadius              = circleMinRadiusDef;
-    x->circleMinArc                 = circleMinArcDef;
+    x->circleMinRadius              = x->circleMinRadiusDef;
+    x->circleMinArc                 = x->circleMinArcDef;
     
     x->leap->config().setFloat("Gesture.Circle.MinRadius",              x->circleMinRadius);
     x->leap->config().setFloat("Gesture.Circle.MinArc",                 x->circleMinArc);
@@ -2281,9 +2338,9 @@ void MRleap_circleGestureReset(t_MRleap *x)
 /************************************/
 void MRleap_keyTapGestureReset(t_MRleap *x)
 {
-    x->keyTapMinDownVelocity        = keyTapMinDownVelocityDef;
-    x->keyTapHistorySeconds         = keyTapHistorySecondsDef;
-    x->keyTapMinDistance            = keyTapMinDistanceDef;
+    x->keyTapMinDownVelocity        = x->keyTapMinDownVelocityDef;
+    x->keyTapHistorySeconds         = x->keyTapHistorySecondsDef;
+    x->keyTapMinDistance            = x->keyTapMinDistanceDef;
     
     x->leap->config().setFloat("Gesture.KeyTap.MinDownVelocity",        x->keyTapMinDownVelocity);
     x->leap->config().setFloat("Gesture.KeyTap.HistorySeconds",         x->keyTapHistorySeconds);
@@ -2296,9 +2353,9 @@ void MRleap_keyTapGestureReset(t_MRleap *x)
 /************************************/
 void MRleap_screenTapGestureReset(t_MRleap *x)
 {
-    x->screenTapMinForwardVelocity  = screenTapMinForwardVelocityDef;
-    x->screenTapHistorySeconds      = screenTapHistorySecondsDef;
-    x->screenTapMinDistance         = screenTapMinDistanceDef;
+    x->screenTapMinForwardVelocity  = x->screenTapMinForwardVelocityDef;
+    x->screenTapHistorySeconds      = x->screenTapHistorySecondsDef;
+    x->screenTapMinDistance         = x->screenTapMinDistanceDef;
     
     x->leap->config().setFloat("Gesture.ScreenTap.MinForwardVelocity",  x->screenTapMinForwardVelocity);
     x->leap->config().setFloat("Gesture.ScreenTap.HistorySeconds",      x->screenTapHistorySeconds);
@@ -2311,8 +2368,8 @@ void MRleap_screenTapGestureReset(t_MRleap *x)
 /************************************/
 void MRleap_swipeGestureReset(t_MRleap *x)
 {
-    x->swipeMinLength               = swipeMinLengthDef;
-    x->swipeMinVelocity             = swipeMinVelocityDef;
+    x->swipeMinLength               = x->swipeMinLengthDef;
+    x->swipeMinVelocity             = x->swipeMinVelocityDef;
     
     x->leap->config().setFloat("Gesture.Swipe.MinLength",               x->swipeMinLength);
     x->leap->config().setFloat("Gesture.Swipe.MinVelocity",             x->swipeMinVelocity);
@@ -2571,31 +2628,16 @@ Leap::Vector MRleap_normalizeVec(t_MRleap *x, Leap::Frame frame, Leap::Vector ve
 /************************************/
 void MRleap_gestureResetAll(t_MRleap *x)
 {
-    /*
-    
-    
-    
-    
-    WHEN USING ANY OF THE RESET METHODS RIGHT NOW, THE NEW VALUE IS NOT STORED!!!
-     NEED TO CALL THE SETTER METHODS SOMEHOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
-    
-    
-    
-    */
-    
-    
-    
-    x->circleMinRadius              = circleMinRadiusDef;
-    x->circleMinArc                 = circleMinArcDef;
-    x->swipeMinLength               = swipeMinLengthDef;
-    x->swipeMinVelocity             = swipeMinVelocityDef;
-    x->keyTapMinDownVelocity        = keyTapMinDownVelocityDef;
-    x->keyTapHistorySeconds         = keyTapHistorySecondsDef;
-    x->keyTapMinDistance            = keyTapMinDistanceDef;
-    x->screenTapMinForwardVelocity  = screenTapMinForwardVelocityDef;
-    x->screenTapHistorySeconds      = screenTapHistorySecondsDef;
-    x->screenTapMinDistance         = screenTapMinDistanceDef;
+    x->circleMinRadius              = x->circleMinRadiusDef;
+    x->circleMinArc                 = x->circleMinArcDef;
+    x->swipeMinLength               = x->swipeMinLengthDef;
+    x->swipeMinVelocity             = x->swipeMinVelocityDef;
+    x->keyTapMinDownVelocity        = x->keyTapMinDownVelocityDef;
+    x->keyTapHistorySeconds         = x->keyTapHistorySecondsDef;
+    x->keyTapMinDistance            = x->keyTapMinDistanceDef;
+    x->screenTapMinForwardVelocity  = x->screenTapMinForwardVelocityDef;
+    x->screenTapHistorySeconds      = x->screenTapHistorySecondsDef;
+    x->screenTapMinDistance         = x->screenTapMinDistanceDef;
     
     x->leap->config().setFloat("Gesture.Circle.MinRadius",              x->circleMinRadius);
     x->leap->config().setFloat("Gesture.Circle.MinArc",                 x->circleMinArc);
@@ -2615,61 +2657,61 @@ void MRleap_gestureResetAll(t_MRleap *x)
 void MRleap_gestureResetGeneric(t_MRleap *x, t_symbol *gesture)
 {
     if (gesture == gensym("circleMinRadius"))   {
-        x->circleMinRadius              = circleMinRadiusDef;
+        x->circleMinRadius              = x->circleMinRadiusDef;
         x->leap->config().setFloat("Gesture.Circle.MinRadius",              x->circleMinRadius);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->circleMinRadius);
     }
     else if (gesture == gensym("circleMinArc"))  {
-        x->circleMinArc                 = circleMinArcDef;
+        x->circleMinArc                 = x->circleMinArcDef;
         x->leap->config().setFloat("Gesture.Circle.MinArc",                 x->circleMinArc);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->circleMinArc);
     }
     else if (gesture == gensym("swipeMinLength"))  {
-        x->swipeMinLength               = swipeMinLengthDef;
+        x->swipeMinLength               = x->swipeMinLengthDef;
         x->leap->config().setFloat("Gesture.Swipe.MinLength",               x->swipeMinLength);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->swipeMinLength);
     }
     else if (gesture == gensym("swipeMinVelocity"))  {
-        x->swipeMinVelocity             = swipeMinVelocityDef;
+        x->swipeMinVelocity             = x->swipeMinVelocityDef;
         x->leap->config().setFloat("Gesture.Swipe.MinVelocity",             x->swipeMinVelocity);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->swipeMinVelocity);
     }
     else if (gesture == gensym("keyTapMinDownVelocity"))  {
-        x->keyTapMinDownVelocity        = keyTapMinDownVelocityDef;
+        x->keyTapMinDownVelocity        = x->keyTapMinDownVelocityDef;
         x->leap->config().setFloat("Gesture.KeyTap.MinDownVelocity",        x->keyTapMinDownVelocity);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->keyTapMinDownVelocity);
     }
     else if (gesture == gensym("keyTapHistorySeconds"))  {
-        x->keyTapHistorySeconds         = keyTapHistorySecondsDef;
+        x->keyTapHistorySeconds         = x->keyTapHistorySecondsDef;
         x->leap->config().setFloat("Gesture.KeyTap.HistorySeconds",         x->keyTapHistorySeconds);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->keyTapHistorySeconds);
     }
     else if (gesture == gensym("keyTapMinDistance"))  {
-        x->keyTapMinDistance            = keyTapMinDistanceDef;
+        x->keyTapMinDistance            = x->keyTapMinDistanceDef;
         x->leap->config().setFloat("Gesture.KeyTap.MinDistance",            x->keyTapMinDistance);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->keyTapMinDistance);
     }
     else if (gesture == gensym("screenTapMinForwardVelocity"))  {
-        x->screenTapMinForwardVelocity  = screenTapMinForwardVelocityDef;
+        x->screenTapMinForwardVelocity  = x->screenTapMinForwardVelocityDef;
         x->leap->config().setFloat("Gesture.ScreenTap.MinForwardVelocity",  x->screenTapMinForwardVelocity);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->screenTapMinForwardVelocity);
     }
     else if (gesture == gensym("screenTapHistorySeconds"))  {
-        x->screenTapHistorySeconds      = screenTapHistorySecondsDef;
+        x->screenTapHistorySeconds      = x->screenTapHistorySecondsDef;
         x->leap->config().setFloat("Gesture.ScreenTap.HistorySeconds",      x->screenTapHistorySeconds);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->screenTapHistorySeconds);
     }
     else if (gesture == gensym("screenTapMinDistance"))  {
-        x->screenTapMinDistance         = screenTapMinDistanceDef;
+        x->screenTapMinDistance         = x->screenTapMinDistanceDef;
         x->leap->config().setFloat("Gesture.ScreenTap.MinDistance",         x->screenTapMinDistance);
         
         post("%s has been reset to the default value of: %f", gesture->s_name, x->screenTapMinDistance);
