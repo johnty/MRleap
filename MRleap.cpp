@@ -1357,9 +1357,9 @@ void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
         if (image.isValid() && image2.isValid()) {
            
             
-   //         MRleap_getImage(x, image, x->matrix_nameLeft);
+//            MRleap_getImage(x, image, x->matrix_nameLeft);
             
-     //       MRleap_getImage(x, image2, x->matrix_nameRight);
+//            MRleap_getImage(x, image2, x->matrix_nameRight);
             
             MRleap_getDistortion(x, image);
         }
@@ -1371,11 +1371,11 @@ void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
 /************************************/
 void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
 {
-    void *matrix;
+    void *matrixDis;
     long i,j;
     long savelock = 0, offset0, offset1;
     t_jit_matrix_info minfo;
-    double *bp, *p;
+    double *bpD, *pD;
     
     
     
@@ -1386,20 +1386,20 @@ void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
     
     
     
-    matrix = jit_object_findregistered(gensym("distortionMap"));
+    matrixDis = jit_object_findregistered(gensym("distortionMap"));
     
-    if (matrix && jit_object_method(matrix, _jit_sym_class_jit_matrix)) {
+    if (matrixDis && jit_object_method(matrixDis, _jit_sym_class_jit_matrix)) {
         
         
-        savelock  = (long) jit_object_method(matrix,_jit_sym_lock, 1);
-        jit_object_method(matrix,_jit_sym_getinfo,&minfo);
-        jit_object_method(matrix,_jit_sym_getdata,&bp);
+        savelock  = (long) jit_object_method(matrixDis,_jit_sym_lock, 1);
+        jit_object_method(matrixDis,_jit_sym_getinfo,&minfo);
+        jit_object_method(matrixDis,_jit_sym_getdata,&bpD);
         
         
-        if ((!bp)||(x->plane >= minfo.planecount)||(x->plane < 0)) {
+        if ((!bpD)||(x->plane >= minfo.planecount)||(x->plane < 0)) {
             
             jit_error_sym(x, _jit_sym_err_calculate);
-            jit_object_method(matrix, _jit_sym_lock, savelock);
+            jit_object_method(matrixDis, _jit_sym_lock, savelock);
             goto out;
         }
         
@@ -1409,7 +1409,7 @@ void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
         minfo.dim[0]        = image.distortionWidth();
         minfo.dim[1]        = image.distortionHeight();
         
-        jit_object_method(matrix, _jit_sym_setinfo, &minfo);
+        jit_object_method(matrixDis, _jit_sym_setinfo, &minfo);
         
         
         //limited to filling at most into 2 dimensions per list
@@ -1420,11 +1420,11 @@ void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
         CLIP_ASSIGN(buffer_size,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
         j = offset0 + offset1 * minfo.dim[0];
         
-        bp += x->plane * 4;
+        bpD += x->plane * 4;
         
         for (i = 0; i < buffer_size; i++, j++) {
             
-            p = bp + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0];
+            pD = bpD + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0];
             
             float value = distortion_buffer[i];
             
@@ -1432,7 +1432,7 @@ void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
             
             if (value >= 0. && value <= 1.) {
             
-                *((float *)p) = value;
+                *((float *)pD) = value;
             }
             else {
              
@@ -1441,7 +1441,7 @@ void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
         }
 
 //          post("distortion = %f",CLAMP(distortion_buffer[i], 0., 1.));
-        jit_object_method(matrix,_jit_sym_lock,savelock);
+        jit_object_method(matrixDis,_jit_sym_lock,savelock);
         
     }
     else {
