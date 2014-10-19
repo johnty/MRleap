@@ -12,6 +12,9 @@
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
+
+#define CELL_PTR_1D(info, data, x)         (((float *)(data)) + ((info)->dimstride[0] * (x)))
+#define CELL_PTR_2D(info, data, x, y)      (CELL_PTR_1D (info, data, x) + ((info)->dimstride[1] * (y)))
 /************************************/
 // a wrapper for cpost() only called for debug builds on Windows
 // to see these console posts, run the DbgView program (part of the SysInternals package distributed by Microsoft)
@@ -1123,6 +1126,14 @@ void MRleap_free(t_MRleap *x)
 /************************************/
 void MRleap_bang(t_MRleap *x)
 {
+//    Leap::Image image;
+    
+//    MRleap_getDistortion(x, image);
+    
+    
+    
+    
+    
     if( x->leap->isConnected()) //controller is a Controller object
     {
         
@@ -1357,11 +1368,11 @@ void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
         if (image.isValid() && image2.isValid()) {
            
             
-//            MRleap_getImage(x, image, x->matrix_nameLeft);
+            MRleap_getImage(x, image, x->matrix_nameLeft);
             
-//            MRleap_getImage(x, image2, x->matrix_nameRight);
+            MRleap_getImage(x, image2, x->matrix_nameRight);
             
-            MRleap_getDistortion(x, image);
+//            MRleap_getDistortion(x, image);
         }
         else    {
             jit_error_sym(x, gensym("No valid images available from leap"));
@@ -1372,17 +1383,17 @@ void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
 void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
 {
     void *matrixDis;
-    long i,j;
-    long savelock = 0, offset0, offset1;
+    long i = 0,j = 0;
+    long savelock = 0;
     t_jit_matrix_info minfo;
-    double *bpD, *pD;
+    char *outM = 0, *pD, *out_data;
     
+     t_atom val[JIT_MATRIX_MAX_PLANECOUNT];
     
-    
-    
+    post("HELLO");
     const float *distortion_buffer = image.distortion();
     
-    long buffer_size = image.distortionWidth() * image.distortionHeight() * 4;
+    long buffer_size = 200; //image.distortionWidth() * image.distortionHeight() * 4;
     
     
     
@@ -1393,65 +1404,55 @@ void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
         
         savelock  = (long) jit_object_method(matrixDis,_jit_sym_lock, 1);
         jit_object_method(matrixDis,_jit_sym_getinfo,&minfo);
-        jit_object_method(matrixDis,_jit_sym_getdata,&bpD);
+        jit_object_method(matrixDis,_jit_sym_getdata,&outM);
         
         
-        if ((!bpD)||(x->plane >= minfo.planecount)||(x->plane < 0)) {
+        if ((!outM)||(x->plane >= minfo.planecount)||(x->plane < 0)) {
             
             jit_error_sym(x, _jit_sym_err_calculate);
             jit_object_method(matrixDis, _jit_sym_lock, savelock);
             goto out;
         }
         
-        minfo.type          = _jit_sym_float32;
+        minfo.type          = _jit_sym_char;
         minfo.dimcount      = 2;
         minfo.planecount    = 2;
-        minfo.dim[0]        = image.distortionWidth();
-        minfo.dim[1]        = image.distortionHeight();
+        minfo.dim[0]        = 5; //image.distortionWidth() * 0.5;
+        minfo.dim[1]        = 5; //image.distortionHeight();
         
         jit_object_method(matrixDis, _jit_sym_setinfo, &minfo);
+        jit_object_method(matrixDis,_jit_sym_getinfo,&minfo);
+        //update everything with new info (so dimstride is calculated)
         
         
-        //limited to filling at most into 2 dimensions per list
-        offset0 = (x->offsetcount>0)?x->offset[0]:0;
-        offset1 = (x->offsetcount>1)?x->offset[1]:0;
-        CLIP_ASSIGN(offset0, 0, minfo.dim[0]-1);
-        CLIP_ASSIGN(offset1, 0, minfo.dim[1]-1);
-        CLIP_ASSIGN(buffer_size,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
-        j = offset0 + offset1 * minfo.dim[0];
-        
-        bpD += x->plane * 4;
-        
-        for (i = 0; i < buffer_size; i++, j++) {
-            
-            pD = bpD + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0];
-            
-            float value = distortion_buffer[i];
-            
-            
-            
-            if (value >= 0. && value <= 1.) {
-            
-                *((float *)pD) = value;
-            }
-            else {
-             
-                post("sym %d", i);
-            }
-        }
+        //jit_parallel_ndim_simplecalc2(<#method fn#>, <#void *data#>, <#long dimcount#>, <#long *dim#>, <#long planecount#>, <#t_jit_matrix_info *minfo1#>, <#char *bp1#>, <#t_jit_matrix_info *minfo2#>, <#char *bp2#>, <#long flags1#>, <#long flags2#>)
 
-//          post("distortion = %f",CLAMP(distortion_buffer[i], 0., 1.));
-        jit_object_method(matrixDis,_jit_sym_lock,savelock);
+       
+        j = minfo.dim[0];
         
+        outM  += minfo.planecount;
+    
+        
+        for (i = 0; i < 25; i++, j++) {
+
+            pD   = outM + (j / minfo.dim[0]) * minfo.dimstride[1] + (j % minfo.dim[0]) * minfo.dimstride[0] - minfo.dimstride[1] - minfo.dimstride[0];
+            
+            *pD++     = i + 100;
+            *pD++     = j + 150;
+           
+        }
+    
+        jit_object_method(matrixDis,_jit_sym_lock,savelock);
+ 
     }
     else {
-        
+ 
         jit_error_sym(x,_jit_sym_err_calculate);
         goto out;
     }
-    
+ 
 out:
-    
+ 
     return;
 }
 /************************************/
@@ -1484,7 +1485,7 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
     
         minfo.type          = _jit_sym_char;
         minfo.dimcount      = 2;
-        minfo.planecount    = 1;
+        minfo.planecount    = 2;
         minfo.dim[0]        = image.width();
         minfo.dim[1]        = image.height();
             
@@ -1492,7 +1493,7 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
             
 //        x->prevDim[0] = image.width();
 //        x->prevDim[1] = image.height();
-        
+
 
         x->imageBufferLength = image.width() * image.height();
         
@@ -1501,15 +1502,9 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
 //        const unsigned char* image_buffer   = image.data();
         
         
-        //limited to filling at most into 2 dimensions per list
-        offset0 = (x->offsetcount>0)?x->offset[0]:0;
-        offset1 = (x->offsetcount>1)?x->offset[1]:0;
-        CLIP_ASSIGN(offset0, 0, minfo.dim[0]-1);
-        CLIP_ASSIGN(offset1, 0, minfo.dim[1]-1);
-        CLIP_ASSIGN(x->imageBufferLength,0, (minfo.dim[0] * (minfo.dim[1] - offset1)) - offset0);
-        j = offset0 + offset1 * minfo.dim[0];
+        j = minfo.dim[0];
         
-        bp += x->plane;
+        bp += minfo.planecount;
         
         for (i = 0; i < x->imageBufferLength; i++, j++) {
             
