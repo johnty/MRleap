@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 6,
 			"minor" : 1,
-			"revision" : 8,
+			"revision" : 9,
 			"architecture" : "x86"
 		}
 ,
@@ -42,11 +42,11 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
-						"rect" : [ 578.0, 70.0, 918.0, 882.0 ],
+						"rect" : [ 0.0, 26.0, 918.0, 882.0 ],
 						"bglocked" : 0,
 						"openinpresentation" : 0,
 						"default_fontsize" : 12.0,
@@ -130,7 +130,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -646,7 +646,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -712,7 +712,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -3526,7 +3526,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -3637,7 +3637,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 12,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -4106,7 +4106,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -5358,7 +5358,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -5494,7 +5494,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 7,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -5630,7 +5630,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 7,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -5738,7 +5738,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 5,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -5860,7 +5860,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 5,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6066,7 +6066,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 12,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6244,7 +6244,6 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6366,7 +6365,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6503,7 +6502,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6625,7 +6624,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6761,7 +6760,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 7,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -6885,7 +6884,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 8,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -8339,7 +8338,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -9522,7 +9521,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -10663,7 +10662,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -10689,6 +10688,21 @@
 						"showontab" : 1,
 						"title" : "Tools",
 						"boxes" : [ 							{
+								"box" : 								{
+									"fontname" : "Arial",
+									"fontsize" : 12.0,
+									"id" : "obj-10",
+									"linecount" : 2,
+									"maxclass" : "message",
+									"numinlets" : 2,
+									"numoutlets" : 1,
+									"outlettype" : [ "" ],
+									"patching_rect" : [ 311.5, 98.0, 210.0, 31.0 ],
+									"text" : "right touchZone 29 -1 30581 0.333333 1"
+								}
+
+							}
+, 							{
 								"box" : 								{
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -10755,7 +10769,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -11449,7 +11463,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 5,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -11722,7 +11736,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -11858,7 +11872,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -11994,7 +12008,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 6,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -12102,7 +12116,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 4,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -12378,8 +12392,8 @@
 									"numinlets" : 0,
 									"numoutlets" : 1,
 									"outlettype" : [ "" ],
-									"patching_rect" : [ 401.0, 16.0, 54.0, 20.0 ],
-									"text" : "r fingers"
+									"patching_rect" : [ 401.0, 16.0, 43.0, 20.0 ],
+									"text" : "r tools"
 								}
 
 							}
@@ -12489,6 +12503,15 @@
 									"hidden" : 1,
 									"midpoints" : [ 40.5, 393.0, 17.0, 393.0, 17.0, 579.0, 40.5, 579.0 ],
 									"source" : [ "obj-16", 0 ]
+								}
+
+							}
+, 							{
+								"patchline" : 								{
+									"destination" : [ "obj-10", 1 ],
+									"disabled" : 0,
+									"hidden" : 0,
+									"source" : [ "obj-17", 0 ]
 								}
 
 							}
@@ -12833,7 +12856,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -13891,11 +13914,11 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
-						"rect" : [ 0.0, 26.0, 918.0, 882.0 ],
+						"rect" : [ 578.0, 70.0, 918.0, 882.0 ],
 						"bglocked" : 0,
 						"openinpresentation" : 0,
 						"default_fontsize" : 12.0,
@@ -13970,11 +13993,11 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
-										"rect" : [ 225.0, 313.0, 544.0, 525.0 ],
+										"rect" : [ 225.0, 313.0, 600.0, 525.0 ],
 										"bglocked" : 0,
 										"openinpresentation" : 0,
 										"default_fontsize" : 12.0,
@@ -14120,7 +14143,7 @@
 														"appversion" : 														{
 															"major" : 6,
 															"minor" : 1,
-															"revision" : 8,
+															"revision" : 9,
 															"architecture" : "x86"
 														}
 ,
@@ -14984,7 +15007,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -15606,7 +15629,7 @@
  ]
 									}
 ,
-									"patching_rect" : [ 408.116699, 180.0, 401.766632, 20.0 ],
+									"patching_rect" : [ 408.116699, 180.0, 398.266571, 20.0 ],
 									"saved_object_attributes" : 									{
 										"default_fontface" : 0,
 										"default_fontname" : "Arial",
@@ -16167,7 +16190,7 @@
 , 							{
 								"box" : 								{
 									"bordercolor" : [ 0.2, 0.2, 0.2, 1.0 ],
-									"cols" : 1,
+									"cols" : 7,
 									"colwidth" : 60,
 									"fontname" : "Arial",
 									"fontsize" : 12.0,
@@ -16438,7 +16461,7 @@
 									"numinlets" : 8,
 									"numoutlets" : 8,
 									"outlettype" : [ "", "", "", "", "", "", "", "" ],
-									"patching_rect" : [ 460.950012, 148.0, 405.0, 20.0 ],
+									"patching_rect" : [ 461.335724, 148.0, 404.999969, 20.0 ],
 									"text" : "route fingerMain direction tip tipVelocity tipDimension touchZone extended"
 								}
 
@@ -17200,7 +17223,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -17472,7 +17495,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -18048,7 +18071,7 @@
 														"appversion" : 														{
 															"major" : 6,
 															"minor" : 1,
-															"revision" : 8,
+															"revision" : 9,
 															"architecture" : "x86"
 														}
 ,
@@ -18838,7 +18861,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -19370,7 +19393,7 @@
 														"appversion" : 														{
 															"major" : 6,
 															"minor" : 1,
-															"revision" : 8,
+															"revision" : 9,
 															"architecture" : "x86"
 														}
 ,
@@ -20148,7 +20171,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -20708,7 +20731,7 @@
 														"appversion" : 														{
 															"major" : 6,
 															"minor" : 1,
-															"revision" : 8,
+															"revision" : 9,
 															"architecture" : "x86"
 														}
 ,
@@ -21505,7 +21528,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -22023,7 +22046,7 @@
 														"appversion" : 														{
 															"major" : 6,
 															"minor" : 1,
-															"revision" : 8,
+															"revision" : 9,
 															"architecture" : "x86"
 														}
 ,
@@ -23318,7 +23341,7 @@
 						"appversion" : 						{
 							"major" : 6,
 							"minor" : 1,
-							"revision" : 8,
+							"revision" : 9,
 							"architecture" : "x86"
 						}
 ,
@@ -23356,7 +23379,7 @@
 										"appversion" : 										{
 											"major" : 6,
 											"minor" : 1,
-											"revision" : 8,
+											"revision" : 9,
 											"architecture" : "x86"
 										}
 ,
@@ -24168,7 +24191,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 11.0, 13.0, 455.0, 30.0 ],
-					"text" : "MRleap      BETA (v.0.4.2, using SDK 2.1.4)",
+					"text" : "MRleap      BETA (v.0.4.2, using SDK 2.1.6)",
 					"textcolor" : [ 0.93, 0.93, 0.97, 1.0 ],
 					"varname" : "autohelp_top_title"
 				}
@@ -24295,7 +24318,7 @@
 					"outlettype" : [ "", "", "", "", "", "", "" ],
 					"patching_rect" : [ 54.5, 411.0, 493.0, 20.0 ],
 					"saved_object_attributes" : 					{
-						"allDegOnOff" : 0,
+						"allDegOnOff" : 1,
 						"armBasisOnOff" : 0,
 						"armCenterNormOnOff" : 0,
 						"armCenterOnOff" : 0,
@@ -24305,7 +24328,7 @@
 						"armWidthOnOff" : 0,
 						"armWristPositionNormOnOff" : 0,
 						"armWristPositionOnOff" : 0,
-						"circleMinArc" : 4.712389,
+						"circleMinArc" : 270.0,
 						"circleMinRadius" : 5.0,
 						"fingerDimensionOnOff" : 0,
 						"fingerDirectionOnOff" : 0,
@@ -24315,7 +24338,7 @@
 						"fingerTipPositionOnOff" : 0,
 						"fingerTipVelocityOnOff" : 0,
 						"fingerTouchZoneOnOff" : 0,
-						"frameHist" : 3,
+						"frameHist" : 2,
 						"frameMainOnOff" : 0,
 						"frameRotOnOff" : 0,
 						"frameRotProb" : 0.4,
@@ -24586,14 +24609,14 @@
 		"dependency_cache" : [ 			{
 				"name" : "MRabstractionPrintBP.maxpat",
 				"bootpath" : "/Users/MartinRitter/Documents/Music/Max6/MRToolbox (all)/done/MRabstractionPrint",
-				"patcherrelativepath" : "../../../../../../Music/Max6/MRToolbox (all)/done/MRabstractionPrint",
+				"patcherrelativepath" : "../../../../../../../Music/Max6/MRToolbox (all)/done/MRabstractionPrint",
 				"type" : "JSON",
 				"implicit" : 1
 			}
 , 			{
 				"name" : "example.maxpresets",
 				"bootpath" : "/Applications/Max 6.1/Cycling '74/max-help",
-				"patcherrelativepath" : "../../../../../../../../../Applications/Max 6.1/Cycling '74/max-help",
+				"patcherrelativepath" : "../../../../../../../../../../Applications/Max 6.1/Cycling '74/max-help",
 				"type" : "JSON",
 				"implicit" : 1
 			}

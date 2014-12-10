@@ -859,7 +859,7 @@ void *MRleap_new(t_symbol *s, long argc, t_atom *argv)
     
 	x = (t_MRleap *)object_alloc((t_class *)MRleap_class);
     
-    object_post((t_object *)x, "MRleap 0.4.1 for The Leap 2.1");
+    object_post((t_object *)x, "MRleap 0.4.3 for The Leap 2.2.0");
     
     x->prevFrameID                      = 0;
     x->frameHist                        = 1;
@@ -1131,9 +1131,6 @@ void MRleap_bang(t_MRleap *x)
 //    MRleap_getDistortion(x, image);
     
     
-    
-    
-    
     if( x->leap->isConnected()) //controller is a Controller object
     {
         
@@ -1170,10 +1167,15 @@ void MRleap_bang(t_MRleap *x)
                 MRleap_getArmData(x, frame);
             }
             /***************Pointables info****************/
-            if (!frame.pointables().isEmpty()) {
+            if (!frame.tools().isEmpty()) {
                 
                 //Process pointables
                 MRleap_getToolData(x, frame);
+            }
+            /*******************************************/
+            if (!frame.fingers().isEmpty()) {
+                
+                //Process pointables
                 MRleap_getFingerData(x, frame);
             }
             /***************Gesture info*******************/
@@ -1379,7 +1381,7 @@ void MRleap_getImageData(t_MRleap *x, Leap::Frame frame)
         }
     }
 }
-/************************************/
+/************************************
 void MRleap_getDistortion(t_MRleap *x, Leap::Image image)
 {
     void *matrixDis;
@@ -1460,7 +1462,7 @@ void MRleap_getImage(t_MRleap *x, Leap::Image image, t_symbol *matrixName)
 {
     void *matrix;
     long i,j;
-    long savelock = 0, offset0, offset1;
+    long savelock = 0;// offset0, offset1;
     t_jit_matrix_info minfo;
     char *bp, *p;
     
@@ -1949,111 +1951,110 @@ void MRleap_getArmData(t_MRleap *x, Leap::Frame frame)
 /************************************/
 void MRleap_getToolData(t_MRleap *x, Leap::Frame frame)
 {
-    Leap::PointableList     pointables      = frame.pointables();
-    const int               numPointables   = pointables.count(); //what's the max?? (have seen up to 5 so far
+    Leap::ToolList          tools      = frame.tools();
+    const int               numTools   = tools.count(); //what's the max?? (have seen up to 5 so far
     
-    for(int i = 0; i < numPointables; ++i)  {
+    object_post((t_object*)x, "numTools: %ld", numTools);
+    
+    for(int i = 0; i < numTools; ++i)  {
         
-        const Leap::Pointable point = pointables[i];
+        const Leap::Tool tool = tools[i];
         
-        if (point.isValid()) {
+        if (tool.isValid()) {
             
-            if(point.isTool())  {
+            MRleap_assignHandID(x, tool.hand());
+            
+            long handID     = tool.hand().id();
+            long pointID    = tool.id();
+            
+            if(x->toolMainOnOff)    {
                 
-                MRleap_assignHandID(x, point.hand());
+                t_atom toolMain[5];
                 
-                long handID     = point.hand().id();
-                long pointID    = point.id();
+                atom_setsym(toolMain,       x->s_toolMain);
+                atom_setlong(toolMain+1,    pointID);
+                atom_setlong(toolMain+2,    handID);
+                atom_setlong(toolMain+3,    x->curFrameID);
+                atom_setfloat(toolMain+4,   tool.timeVisible() * 1000);//sec -> ms
                 
-                if(x->toolMainOnOff)    {
-                    
-                    t_atom toolMain[5];
-                    
-                    atom_setsym(toolMain,       x->s_toolMain);
-                    atom_setlong(toolMain+1,    pointID);
-                    atom_setlong(toolMain+2,    handID);
-                    atom_setlong(toolMain+3,    x->curFrameID);
-                    atom_setfloat(toolMain+4,   point.timeVisible() * 1000);//sec -> ms
-                    
-                    outlet_anything(x->outletTools, x->HAND, 5, toolMain);
-                }
-                /////////////direction///////////////
-                if (x->toolDirectionOnOff) {
-                    
-                    t_atom pointDirection[7];
-                    
-                    atom_setsym(pointDirection,         x->s_direction);
-                    atom_setlong(pointDirection+1,      pointID);
-                    atom_setlong(pointDirection+2,      handID);
-                    atom_setlong(pointDirection+3,      x->curFrameID);
-                    atom_setfloat(pointDirection+4,     point.direction().x);
-                    atom_setfloat(pointDirection+5,     point.direction().y);
-                    atom_setfloat(pointDirection+6,     point.direction().z);
-                    
-                    outlet_anything(x->outletTools, x->HAND, 7, pointDirection);
-                }
-                /////////////tip///////////////
-                if (x->toolTipPositionOnOff)    {
-                    
-                    
-                    Leap::Vector tip = MRleap_normalizeVec(x, frame, point.tipPosition(), x->toolTipNormOnOff);
+                outlet_anything(x->outletTools, x->HAND, 5, toolMain);
+            }
+            /////////////direction///////////////
+            if (x->toolDirectionOnOff) {
+                
+                t_atom pointDirection[7];
+                
+                atom_setsym(pointDirection,         x->s_direction);
+                atom_setlong(pointDirection+1,      pointID);
+                atom_setlong(pointDirection+2,      handID);
+                atom_setlong(pointDirection+3,      x->curFrameID);
+                atom_setfloat(pointDirection+4,     tool.direction().x);
+                atom_setfloat(pointDirection+5,     tool.direction().y);
+                atom_setfloat(pointDirection+6,     tool.direction().z);
+                
+                outlet_anything(x->outletTools, x->HAND, 7, pointDirection);
+            }
+            /////////////tip///////////////
+            if (x->toolTipPositionOnOff)    {
+                
+                
+                Leap::Vector tip = MRleap_normalizeVec(x, frame, tool.tipPosition(), x->toolTipNormOnOff);
 
-                    t_atom pointTip[7];
-                    
-                    atom_setsym(pointTip,       x->s_tip);
-                    atom_setlong(pointTip+1,    pointID);
-                    atom_setlong(pointTip+2,    handID);
-                    atom_setlong(pointTip+3,    x->curFrameID);
-                    atom_setfloat(pointTip+4,   tip.x);
-                    atom_setfloat(pointTip+5,   tip.y);
-                    atom_setfloat(pointTip+6,   tip.z);
-                    
-                    outlet_anything(x->outletTools, x->HAND, 7, pointTip);
-                }
-                /////////////tip velocity///////////////
+                t_atom pointTip[7];
                 
-                if (x->toolTipVelocityOnOff)    {
-                    
-                    t_atom pointVel[7];
-                    
-                    atom_setsym(pointVel,       x->s_tipVelocity);
-                    atom_setlong(pointVel+1,    pointID);
-                    atom_setlong(pointVel+2,    handID);
-                    atom_setlong(pointVel+3,    x->curFrameID);
-                    atom_setfloat(pointVel+4,   point.tipVelocity().x);
-                    atom_setfloat(pointVel+5,   point.tipVelocity().y);
-                    atom_setfloat(pointVel+6,   point.tipVelocity().z);
-                    
-                    outlet_anything(x->outletTools, x->HAND, 7, pointVel);
-                }
-                ///////////////tip dimension///////////
-                if (x->toolDimensionOnOff)  {
-                    
-                    t_atom pointDim[6];
-                    
-                    atom_setsym(pointDim,       x->s_tipDimension);
-                    atom_setlong(pointDim+1,    pointID);
-                    atom_setlong(pointDim+2,    handID);
-                    atom_setlong(pointDim+3,    x->curFrameID);
-                    atom_setfloat(pointDim+4,   point.width());
-                    atom_setfloat(pointDim+5,   point.length());
-                    
-                    outlet_anything(x->outletTools, x->HAND, 6, pointDim);
-                }
-                ///////////////touch zone//////////////
-                if (x->toolTouchZoneOnOff)  {
-                    
-                    t_atom pointTouch[6];
-                    
-                    atom_setsym(pointTouch,         x->s_touchZone);
-                    atom_setlong(pointTouch+1,      pointID);
-                    atom_setlong(pointTouch+2,      handID);
-                    atom_setlong(pointTouch+3,      x->curFrameID);
-                    atom_setfloat(pointTouch+4,     point.touchDistance());
-                    atom_setlong(pointTouch+5,      point.touchZone());
-                    
-                    outlet_anything(x->outletTools, x->HAND, 6, pointTouch);
-                }
+                atom_setsym(pointTip,       x->s_tip);
+                atom_setlong(pointTip+1,    pointID);
+                atom_setlong(pointTip+2,    handID);
+                atom_setlong(pointTip+3,    x->curFrameID);
+                atom_setfloat(pointTip+4,   tip.x);
+                atom_setfloat(pointTip+5,   tip.y);
+                atom_setfloat(pointTip+6,   tip.z);
+                
+                outlet_anything(x->outletTools, x->HAND, 7, pointTip);
+            }
+            /////////////tip velocity///////////////
+            
+            if (x->toolTipVelocityOnOff)    {
+                
+                t_atom pointVel[7];
+                
+                atom_setsym(pointVel,       x->s_tipVelocity);
+                atom_setlong(pointVel+1,    pointID);
+                atom_setlong(pointVel+2,    handID);
+                atom_setlong(pointVel+3,    x->curFrameID);
+                atom_setfloat(pointVel+4,   tool.tipVelocity().x);
+                atom_setfloat(pointVel+5,   tool.tipVelocity().y);
+                atom_setfloat(pointVel+6,   tool.tipVelocity().z);
+                
+                outlet_anything(x->outletTools, x->HAND, 7, pointVel);
+            }
+            ///////////////tip dimension///////////
+            if (x->toolDimensionOnOff)  {
+                
+                t_atom pointDim[6];
+                
+                atom_setsym(pointDim,       x->s_tipDimension);
+                atom_setlong(pointDim+1,    pointID);
+                atom_setlong(pointDim+2,    handID);
+                atom_setlong(pointDim+3,    x->curFrameID);
+                atom_setfloat(pointDim+4,   tool.width());
+                atom_setfloat(pointDim+5,   tool.length());
+                
+                outlet_anything(x->outletTools, x->HAND, 6, pointDim);
+            }
+            ///////////////touch zone//////////////
+            if (x->toolTouchZoneOnOff)  {
+                
+                t_atom pointTouch[6];
+                
+                atom_setsym(pointTouch,         x->s_touchZone);
+                atom_setlong(pointTouch+1,      pointID);
+                atom_setlong(pointTouch+2,      handID);
+                atom_setlong(pointTouch+3,      x->curFrameID);
+                atom_setfloat(pointTouch+4,     tool.touchDistance());
+                atom_setlong(pointTouch+5,      tool.touchZone());
+                
+                outlet_anything(x->outletTools, x->HAND, 6, pointTouch);
             }
         }
     }
