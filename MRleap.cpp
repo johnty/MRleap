@@ -175,10 +175,12 @@ typedef struct _MRleap
     float screenTapHistorySecondsDef;
     float screenTapMinDistanceDef;
     
-    ///////////
-    //////Leap
+    ////////////////////////////////
+    //////CONNECT TO LEAP///////////
+    ///////////////////////////////
 	Leap::Controller	*leap;
-    ////////////////
+    ///////////////////////////////
+    ///////////////////////////////
     
     t_symbol            *RIGHT;
     t_symbol            *LEFT;
@@ -1730,8 +1732,6 @@ void MRleap_getHandData(t_MRleap *x, Leap::Frame frame)
             
             /////////////translation/////////////////////
             float translationProb = hand.translationProbability(x->leap->frame(x->frameHist));
-            
-            
             
             if (x->handTranslationRawOnOff)    {
                 

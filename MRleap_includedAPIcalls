@@ -1,0 +1,157 @@
+Document which calls from the current API are included in the external:
+
+C++ (v.2.2):
+
+
+FRAME:
+
+const Leap::Frame       frame       = x->leap->frame();
+const Leap::HandList    hands       = frame.hands();
+const int               numHands    = hands.count();
+float                   fps         = frame.currentFramesPerSecond();
+
+frame.rotationProbability();
+frame.scaleProbability();
+frame.scaleFactor()
+frame.translationProbability();
+frame.id()
+frame.timestamp()
+frame.rotationAxis()
+frame.rotationAngle()
+frame.rotationMatrix()
+
+
+IMAGE:
+Leap::ImageList images = frame.images();
+image.isValid()
+
+
+
+
+HAND:
+
+Leap::HandList          hands       = frame.hands();
+hands.count();
+Leap::Hand hand = hands[i];
+hand.id();
+hand.confidence();
+
+hand.timeVisible();
+hand.grabStrength()
+hand.pinchStrength()
+hand.palmWidth()
+
+hand.tools().count()
+
+hand.stabilizedPalmPosition();
+hand.palmPosition();
+hand.palmVelocity();
+
+hand.sphereCenter();
+hand.sphereRadius();
+
+hand.rotationProbability();
+hand.rotationAngle();
+
+hand.scaleProbability();
+hand.scaleFactor()
+
+hand.translationProbability();
+hand.translation()
+
+hand.rotationMatrix()
+
+hand.direction().pitch()
+hand.direction().yaw()
+hand.palmNormal().roll()
+
+hand.basis()
+
+
+
+
+ARM:
+
+Leap::Arm arm = hands[i].arm();
+Leap::Hand  hand = hands[i];
+
+arm.basis()
+arm.center()
+arm.direction();
+arm.elbowPosition()
+arm.wristPosition()
+displacement.magnitude()
+
+
+TOOLS:
+
+Leap::ToolList          tools      = frame.tools();
+const int               numTools   = tools.count();
+const Leap::Tool        tool = tools[i];
+
+tool.timeVisible()
+tool.direction()
+tool.tipPosition()
+tool.tipVelocity()
+tool.width()
+tool.length()
+tool.touchDistance()
+tool.touchZone()
+
+
+
+FINGERS:
+
+Leap::FingerList        fingers      = frame.fingers();
+const int               numFingers   = fingers.count();
+Leap::Finger            finger       = fingers[i];
+
+finger.type()
+finger.timeVisible()
+finger.direction()
+finger.tipPosition()
+finger.tipVelocity()
+finger.width()
+finger.length()
+finger.touchDistance()
+finger.touchZone()
+finger.isExtended()
+
+
+
+
+GESTURES:
+
+int gestureCount = frame.gestures().count();
+Leap::Gesture gesture = frame.gestures()[i];
+
+    CIRCLE:
+
+circle.duration()
+circle.center()
+circle.progress()
+circle.radius()
+circle.state()
+
+    TAP:
+
+tap.duration()
+tap.position()
+tap.state()
+tap.direction()
+
+    SCREEN TAP:
+
+tap.duration()
+tap.position()
+tap.state()
+tap.direction()
+
+    SWIPE:
+
+swipe.startPosition()
+swipe.position()
+swipe.state()
+swipe.speed()
+swipe.direction()
+
